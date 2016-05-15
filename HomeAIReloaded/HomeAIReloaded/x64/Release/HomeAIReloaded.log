@@ -1,0 +1,16 @@
+﻿  Annotation.cpp
+  introduction_windows_vs.cpp
+..\home-ai-reloaded\introduction_windows_vs.cpp(90): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+  VisualContextAnnotator.cpp
+..\home-ai-reloaded\VisualContextAnnotator.cpp(199): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+..\home-ai-reloaded\VisualContextAnnotator.cpp(199): warning C4267: 'initializing': conversion from 'size_t' to 'const int', possible loss of data
+..\home-ai-reloaded\VisualContextAnnotator.cpp(212): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+..\home-ai-reloaded\VisualContextAnnotator.cpp(212): warning C4267: 'initializing': conversion from 'size_t' to 'const int', possible loss of data
+..\home-ai-reloaded\VisualContextAnnotator.cpp(276): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+..\home-ai-reloaded\VisualContextAnnotator.cpp(276): warning C4267: 'initializing': conversion from 'size_t' to 'const int', possible loss of data
+..\home-ai-reloaded\VisualContextAnnotator.cpp(292): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+..\home-ai-reloaded\VisualContextAnnotator.cpp(292): warning C4267: 'initializing': conversion from 'size_t' to 'const int', possible loss of data
+  Generating code
+  All 1089 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  HomeAIReloaded.vcxproj -> D:\Projects\C++\home-ai-reloaded-master\HomeAIReloaded\x64\Release\HomeAIReloaded.exe

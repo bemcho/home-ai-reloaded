@@ -1,0 +1,44 @@
+ Volume in drive D is data
+ Volume Serial Number is 62F1-B4DB
+
+ Directory of D:\Projects\opencv-3.1.0-build\install\x64\vc14\lib
+
+03/22/2016  22:25           257,366 opencv_aruco310.lib
+03/22/2016  22:24           190,982 opencv_bgsegm310.lib
+03/22/2016  22:25           290,598 opencv_calib3d310.lib
+03/22/2016  22:26           280,536 opencv_ccalib310.lib
+03/22/2016  22:23           675,112 opencv_core310.lib
+03/22/2016  22:25           238,096 opencv_datasets310.lib
+03/22/2016  22:24         1,453,870 opencv_dnn310.lib
+03/22/2016  22:24           177,444 opencv_dpm310.lib
+03/22/2016  22:24           220,842 opencv_face310.lib
+03/22/2016  22:24           316,248 opencv_features2d310.lib
+03/22/2016  22:24           183,550 opencv_flann310.lib
+03/22/2016  22:24           174,468 opencv_fuzzy310.lib
+03/22/2016  22:24           194,204 opencv_highgui310.lib
+03/22/2016  22:24           180,480 opencv_imgcodecs310.lib
+03/22/2016  22:24           284,060 opencv_imgproc310.lib
+03/22/2016  22:23           212,934 opencv_ml310.lib
+03/22/2016  22:24           257,248 opencv_objdetect310.lib
+03/22/2016  22:25           204,706 opencv_optflow310.lib
+03/22/2016  22:24           254,640 opencv_photo310.lib
+03/22/2016  22:24           173,110 opencv_plot310.lib
+03/22/2016  22:24           200,246 opencv_reg310.lib
+03/22/2016  22:25           309,856 opencv_rgbd310.lib
+03/22/2016  22:24           208,704 opencv_shape310.lib
+03/22/2016  22:25           231,816 opencv_stereo310.lib
+03/22/2016  22:25           670,040 opencv_stitching310.lib
+03/22/2016  22:25           178,764 opencv_structured_light310.lib
+03/22/2016  22:24           257,224 opencv_superres310.lib
+03/22/2016  22:24           200,124 opencv_surface_matching310.lib
+03/22/2016  22:25           274,118 opencv_text310.lib
+03/22/2016  22:26           335,052 opencv_tracking310.lib
+03/22/2016  22:24         8,435,178 opencv_ts310.lib
+03/22/2016  22:24           201,136 opencv_video310.lib
+03/22/2016  22:24           188,982 opencv_videoio310.lib
+03/22/2016  22:26           508,328 opencv_videostab310.lib
+03/22/2016  22:25           326,758 opencv_ximgproc310.lib
+03/22/2016  22:24           188,800 opencv_xobjdetect310.lib
+03/22/2016  22:24           177,120 opencv_xphoto310.lib
+              37 File(s)     19,112,740 bytes
+               0 Dir(s)  549,176,610,816 bytes free

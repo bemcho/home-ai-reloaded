@@ -1,0 +1,30 @@
+ Volume in drive D is data
+ Volume Serial Number is 62F1-B4DB
+
+ Directory of D:\Projects\opencv-3.1.0-build\install\x64\vc14\bin
+
+03/21/2016  11:55    <DIR>          .
+03/21/2016  11:55    <DIR>          ..
+03/21/2016  11:55                 0 dir.txt
+03/21/2016  11:02            55,808 opencv_annotation.exe
+03/21/2016  11:02         1,646,080 opencv_calib3d310.dll
+03/21/2016  11:01        10,889,728 opencv_core310.dll
+03/21/2016  11:03            38,912 opencv_createsamples.exe
+03/21/2016  11:02           797,184 opencv_features2d310.dll
+03/21/2016  10:33        12,954,112 opencv_ffmpeg310_64.dll
+03/21/2016  11:01           507,392 opencv_flann310.dll
+03/21/2016  11:01           179,200 opencv_highgui310.dll
+03/21/2016  11:01         2,606,080 opencv_imgcodecs310.dll
+03/21/2016  11:01        25,254,912 opencv_imgproc310.dll
+03/21/2016  11:01           713,728 opencv_ml310.dll
+03/21/2016  11:02           614,400 opencv_objdetect310.dll
+03/21/2016  11:01           969,216 opencv_photo310.dll
+03/21/2016  11:01           315,904 opencv_shape310.dll
+03/21/2016  11:03           976,896 opencv_stitching310.dll
+03/21/2016  11:01           289,280 opencv_superres310.dll
+03/21/2016  11:03           386,048 opencv_traincascade.exe
+03/21/2016  11:01           482,816 opencv_video310.dll
+03/21/2016  11:01           258,048 opencv_videoio310.dll
+03/21/2016  11:03           636,928 opencv_videostab310.dll
+              21 File(s)     60,572,672 bytes
+               2 Dir(s)  556,834,971,648 bytes free
