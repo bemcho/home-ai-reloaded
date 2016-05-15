@@ -164,7 +164,7 @@ Annotation VisualContextAnnotator::predictWithLBPInRectangle(const Rect& detect,
 	double confidence = 0.0;
 	model->predict(face, predictedLabel, confidence);
 	std::stringstream fmt;
-	if (predictedLabel > 0)
+	if (predictedLabel > 0 && confidence <= 50.0)
 	{
 		fmt << model->getLabelInfo(predictedLabel) << "L:" << predictedLabel << "C:" << confidence;
 	}
