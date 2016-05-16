@@ -21,9 +21,10 @@ void VisualContextAnnotator::loadCascadeClassifier(const string cascadeClassifie
 
 }
 
-void VisualContextAnnotator::loadLBPModel(const string path)
+void VisualContextAnnotator::loadLBPModel(const string path, double maxDistance)
 {
 	model->load(path);
+	this->maxDistance = maxDistance;
 }
 
 void VisualContextAnnotator::loadCAFFEModel(const string modelBinPath, const string modelProtoTextPath, const string synthWordPath)
@@ -114,7 +115,7 @@ void VisualContextAnnotator::detectObjectsWithCanny(vector<vector<Point>>& conto
 	/// Reduce noise with a kernel 3x3
 	//blur(frame_gray, detected_edges, Size(3, 3));
 	GaussianBlur(frame_gray, detected_edges, Size(3, 3), 1);
-	
+
 
 	/// Canny detector
 	Canny(detected_edges, detected_edges, lowThreshold, lowThreshold * 3, 3);
@@ -164,7 +165,7 @@ Annotation VisualContextAnnotator::predictWithLBPInRectangle(const Rect& detect,
 	double confidence = 0.0;
 	model->predict(face, predictedLabel, confidence);
 	std::stringstream fmt;
-	if (predictedLabel > 0 && confidence <= 60.0)
+	if (predictedLabel > 0 && confidence <= maxDistance)
 	{
 		fmt << model->getLabelInfo(predictedLabel) << "L:" << predictedLabel << "C:" << confidence;
 	}
@@ -181,8 +182,8 @@ struct PredictWithLBPBody {
 	Mat& frame_gray_;
 	Annotation* result_;
 	PredictWithLBPBody(VisualContextAnnotator & u, vector<Rect> detects, Mat& frame_gray) :vca_(u), detects_(detects), frame_gray_(frame_gray) {}
-	void operator()(const tbb::blocked_range<int>& range) const {
-		for (int i = range.begin(); i != range.end(); ++i)
+	void operator()(const tbb::blocked_range<long>& range) const {
+		for (long i = range.begin(); i != range.end(); ++i)
 			result_[i] = vca_.predictWithLBPInRectangle(detects_[i], frame_gray_);
 	}
 };
@@ -196,11 +197,11 @@ void VisualContextAnnotator::predictWithLBP(vector<Annotation>& annotations, cv:
 	detectWithCascadeClassifier(detects, frame_gray);
 	PredictWithLBPBody parallelLBP(*this, detects, frame_gray);
 
-	const int tsize = detects.size();
+	const long tsize = detects.size();
 
 	parallelLBP.result_ = new Annotation[tsize];
 	vector<Annotation> result(tsize);
-	tbb::parallel_for(tbb::blocked_range<int>(0, tsize), // Index space for loop
+	tbb::parallel_for(tbb::blocked_range<long>(0, tsize), // Index space for loop
 		parallelLBP,                    // Body of loop
 		affinityLBP);
 
@@ -209,7 +210,7 @@ void VisualContextAnnotator::predictWithLBP(vector<Annotation>& annotations, cv:
 
 void VisualContextAnnotator::predictWithLBP(vector<Annotation>& annotations, vector<Rect> detects, cv::Mat & frame_gray)
 {
-	const int tsize = detects.size();
+	const long tsize = detects.size();
 	if (tsize <= 0)
 		return;
 	static tbb::affinity_partitioner affinityLBP2;
@@ -217,7 +218,7 @@ void VisualContextAnnotator::predictWithLBP(vector<Annotation>& annotations, vec
 
 	parallelLBP.result_ = new Annotation[tsize];
 	vector<Annotation> result(tsize);
-	tbb::parallel_for(tbb::blocked_range<int>(0, tsize), // Index space for loop
+	tbb::parallel_for(tbb::blocked_range<long>(0, tsize), // Index space for loop
 		parallelLBP,                    // Body of loop
 		affinityLBP2);
 
@@ -226,8 +227,6 @@ void VisualContextAnnotator::predictWithLBP(vector<Annotation>& annotations, vec
 
 Annotation VisualContextAnnotator::predictWithCAFFEInRectangle(const Rect & detect, Mat & frame)
 {
-
-
 	cv::Mat img;
 	img = Scalar::all(0);
 
@@ -261,8 +260,8 @@ struct PredictWithCAFFEBody {
 	Mat& frame_gray_;
 	Annotation* result_;
 	PredictWithCAFFEBody(VisualContextAnnotator & u, vector<Rect> detects, Mat& frame_gray) :vca_(u), detects_(detects), frame_gray_(frame_gray) {}
-	void operator()(const tbb::blocked_range<int>& range) const {
-		for (int i = range.begin(); i != range.end(); ++i)
+	void operator()(const tbb::blocked_range<long>& range) const {
+		for (long i = range.begin(); i != range.end(); ++i)
 			result_[i] = vca_.predictWithCAFFEInRectangle(detects_[i], frame_gray_);
 	}
 };
@@ -273,11 +272,11 @@ void VisualContextAnnotator::predictWithCAFFE(vector<Annotation>& annotations, c
 	detectWithCascadeClassifier(detects, frame_gray);
 	PredictWithCAFFEBody parallelDNN(*this, detects, frame);
 
-	const int tsize = detects.size();
+	const long tsize = detects.size();
 
 	parallelDNN.result_ = new Annotation[tsize];
 	vector<Annotation> result(tsize);
-	tbb::parallel_for(tbb::blocked_range<int>(0, tsize), // Index space for loop
+	tbb::parallel_for(tbb::blocked_range<long>(0, tsize), // Index space for loop
 		parallelDNN,                    // Body of loop
 		affinityDNN2);
 
@@ -289,11 +288,11 @@ void VisualContextAnnotator::predictWithCAFFE(vector<Annotation>& annotations, v
 	static tbb::affinity_partitioner affinityDNN;
 	PredictWithCAFFEBody parallelDNN(*this, detects, frame);
 
-	const int tsize = detects.size();
+	const long tsize = detects.size();
 
 	parallelDNN.result_ = new Annotation[tsize];
 	vector<Annotation> result(tsize);
-	tbb::parallel_for(tbb::blocked_range<int>(0, tsize), // Index space for loop
+	tbb::parallel_for(tbb::blocked_range<long>(0, tsize), // Index space for loop
 		parallelDNN,                    // Body of loop
 		affinityDNN);
 
