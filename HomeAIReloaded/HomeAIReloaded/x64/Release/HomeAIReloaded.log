@@ -1,17 +1,8 @@
-﻿  VisualContextAnnotator.cpp
-..\home-ai-reloaded\VisualContextAnnotator.cpp(200): warning C4267: 'initializing': conversion from 'size_t' to 'long', possible loss of data
-..\home-ai-reloaded\VisualContextAnnotator.cpp(200): warning C4267: 'initializing': conversion from 'size_t' to 'const long', possible loss of data
-..\home-ai-reloaded\VisualContextAnnotator.cpp(213): warning C4267: 'initializing': conversion from 'size_t' to 'long', possible loss of data
-..\home-ai-reloaded\VisualContextAnnotator.cpp(213): warning C4267: 'initializing': conversion from 'size_t' to 'const long', possible loss of data
-..\home-ai-reloaded\VisualContextAnnotator.cpp(275): warning C4267: 'initializing': conversion from 'size_t' to 'long', possible loss of data
-..\home-ai-reloaded\VisualContextAnnotator.cpp(275): warning C4267: 'initializing': conversion from 'size_t' to 'const long', possible loss of data
-..\home-ai-reloaded\VisualContextAnnotator.cpp(291): warning C4267: 'initializing': conversion from 'size_t' to 'long', possible loss of data
-..\home-ai-reloaded\VisualContextAnnotator.cpp(291): warning C4267: 'initializing': conversion from 'size_t' to 'const long', possible loss of data
-  introduction_windows_vs.cpp
-..\home-ai-reloaded\introduction_windows_vs.cpp(170): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+﻿  introduction_windows_vs.cpp
+..\home-ai-reloaded\introduction_windows_vs.cpp(172): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
   Generating code
-  10 of 1109 functions ( 0.9%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    4 functions had inline decision re-evaluated but remain unchanged
+  56 of 1111 functions ( 5.0%) were compiled, the rest were copied from previous compilation.
+    2 functions were new in current compilation
+    11 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
   HomeAIReloaded.vcxproj -> D:\Projects\C++\home-ai-reloaded-master\home-ai-reloaded\HomeAIReloaded\x64\Release\HomeAIReloaded.exe

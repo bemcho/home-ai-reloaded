@@ -22,6 +22,7 @@ String face_cascade_name = "cascade_frontalface.xml";
 String window_name = "Capture - Face detection";
 VideoCapture capture;
 String lbp_recognizer_name = "lbphFaceRecognizer.xml";
+String clips_vca_rules = "visualcontextrules.clp";
 
 Ptr<void> theEnv ;
 DATA_OBJECT rv;
@@ -124,6 +125,7 @@ void AddDetectFact2(void *environment, string type, Rect at, string ontology)
 int main(int, char**)
 {
 	theEnv = CreateEnvironment();
+	EnvLoad(theEnv, clips_vca_rules.c_str());
 	char * cs = "(deftemplate visualdetect"
 		" (slot type (default object))"
 		" (multislot at)"
