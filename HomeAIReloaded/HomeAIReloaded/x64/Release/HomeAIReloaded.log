@@ -1,8 +1,8 @@
-﻿  introduction_windows_vs.cpp
-..\home-ai-reloaded\introduction_windows_vs.cpp(172): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+﻿  home_ai_visual_repl.cpp
+..\home-ai-reloaded\home_ai_visual_repl.cpp(172): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
   Generating code
-  56 of 1111 functions ( 5.0%) were compiled, the rest were copied from previous compilation.
-    2 functions were new in current compilation
-    11 functions had inline decision re-evaluated but remain unchanged
+  629 of 1111 functions (56.6%) were compiled, the rest were copied from previous compilation.
+    55 functions were new in current compilation
+    111 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
   HomeAIReloaded.vcxproj -> D:\Projects\C++\home-ai-reloaded-master\home-ai-reloaded\HomeAIReloaded\x64\Release\HomeAIReloaded.exe

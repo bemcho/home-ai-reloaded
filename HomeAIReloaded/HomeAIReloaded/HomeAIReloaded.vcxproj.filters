@@ -18,10 +18,10 @@
     <ClCompile Include="..\home-ai-reloaded\Annotation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\home-ai-reloaded\introduction_windows_vs.cpp">
+    <ClCompile Include="..\home-ai-reloaded\VisualContextAnnotator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\home-ai-reloaded\VisualContextAnnotator.cpp">
+    <ClCompile Include="..\home-ai-reloaded\home_ai_visual_repl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
