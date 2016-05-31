@@ -26,7 +26,7 @@ public:
 	VisualContextAnnotator();
 	virtual ~VisualContextAnnotator();
 	void loadCascadeClassifier(const string cascadeClassifierPath);
-	void loadLBPModel(const string path, double maxDistance = 80.0);
+	void loadLBPModel(const string path, double maxDistance = 65.0);
 	void loadCAFFEModel(const string modelBinPath, const string modelProtoTextPath, const string synthWordPath);
 	void detectWithCascadeClassifier(vector<Rect>& result, Mat& frame_gray, Size minSize = Size(80, 80));
 	void detectWithMorphologicalGradient(vector<Rect>& result, Mat& frame, Size minSize = Size(8, 8), Size kernelSize = Size(9, 1));
