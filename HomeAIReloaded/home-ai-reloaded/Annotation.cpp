@@ -7,7 +7,7 @@ Annotation::Annotation()
 {
 }
 
-Annotation::Annotation(cv::Rect rect, std::string desc) : description(desc), rectangle(rect)
+Annotation::Annotation(cv::Rect rect, std::string desc, std::string annotationType) : description(desc), rectangle(rect),type(annotationType)
 {
 }
 
@@ -19,6 +19,11 @@ Annotation::~Annotation()
 string Annotation::getDescription()
 {
 	return description;
+}
+
+std::string Annotation::getType()
+{
+	return type;
 }
 
 cv::Rect Annotation::getRectangle()

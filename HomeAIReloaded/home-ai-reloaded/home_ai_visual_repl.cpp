@@ -6,15 +6,17 @@
 #include "opencv2/videoio.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
-
-#include <fstream>
-#include <iostream>
-#include <cstdlib>
-#include <stdio.h>
+#include "Annotation.h"
+#include "tesseract/baseapi.h"
 #include "VisualContextAnnotator.h"
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_invoke.h"
 #include "clips/clips.h"
+
+#include <fstream>
+#include <iostream>
+#include <cstdlib>
+
 using namespace std;
 
 
@@ -24,12 +26,11 @@ VideoCapture capture;
 String lbp_recognizer_name = "lbphFaceRecognizer.xml";
 String clips_vca_rules = "visualcontextrules.clp";
 
-Ptr<void> theEnv ;
+Ptr<void> theCLIPSEnv;
+
 DATA_OBJECT rv;
 Rect_<int> CAFFERect;
-
 Mat frame, frame_gray;
-//char* window_name = "Edge Map";
 bool drawFaceDetectsToWindow = true;
 bool drawEdgeDetectsToWindow = false;
 bool detectAndDisplayWithCAFFEConf = true;
@@ -46,6 +47,7 @@ VisualContextAnnotator faceAnnotator;
 VisualContextAnnotator textAnnotator;
 VisualContextAnnotator objectsAnnotator;
 int lowThreshold = 77;
+
 void AddDetectFact2(void *environment, string type, Rect at, string ontology)
 {
 	void *newFact;
@@ -85,7 +87,7 @@ void AddDetectFact2(void *environment, string type, Rect at, string ontology)
 	SetMFValue(theMultifield, 2, EnvAddLong(environment, at.y));
 
 	SetMFType(theMultifield, 3, INTEGER);
-	SetMFValue(theMultifield,3, EnvAddLong(environment, at.width));
+	SetMFValue(theMultifield, 3, EnvAddLong(environment, at.width));
 
 	SetMFType(theMultifield, 4, INTEGER);
 	SetMFValue(theMultifield, 4, EnvAddLong(environment, at.height));
@@ -124,45 +126,47 @@ void AddDetectFact2(void *environment, string type, Rect at, string ontology)
 */
 int main(int, char**)
 {
-	theEnv = CreateEnvironment();
-	EnvLoad(theEnv, clips_vca_rules.c_str());
+	theCLIPSEnv = CreateEnvironment();
+	EnvLoad(theCLIPSEnv, clips_vca_rules.c_str());
 	char * cs = "(deftemplate visualdetect"
 		" (slot type (default object))"
 		" (multislot at)"
 		" (slot ontology)"
 		" )";
-	EnvBuild(theEnv, cs);
+	EnvBuild(theCLIPSEnv, cs);
+
+	textAnnotator.loadTESSERACTModel("..\\Release/", "eng", tesseract::OEM_TESSERACT_CUBE_COMBINED);
 
 	String modelTxt = "bvlc_googlenet.prototxt";
 	String modelBin = "bvlc_googlenet.caffemodel";
 
 	faceAnnotator.loadCascadeClassifier(face_cascade_name);
 	faceAnnotator.loadLBPModel(lbp_recognizer_name);
+
 	objectsAnnotator.loadCAFFEModel(modelBin, modelTxt, "synset_words.txt");
 	objectsAnnotator.loadLBPModel(lbp_recognizer_name);
+
 	cv::namedWindow(window_name, WINDOW_OPENGL);
-	//-- 1. Load the cascade
-
-
+	//tesseract init
 	//--1.5. Init Camera
-	for (int i = 0; i < 50; i++)
+	for (int i = 0; i < 500; i++)
 	{
 		capture = VideoCapture(i);
 		if (!capture.isOpened())
 		{
 			capture.release();
-            cout << "--(!)Error opening video capture\nYou do have camera plugged in, right?" << endl;
-            if(i == 49)
-                return -1;
-            
-            continue;
+			cout << "--(!)Error opening video capture\nYou do have camera plugged in, right?" << endl;
+			if (i == 49)
+				return -1;
+
+			continue;
 		}
 		else
 		{
 			cout << "--(!)Camera found on " << i << " device index.";
 			break;
 		}
-}
+	}
 
 	capture.set(CAP_PROP_FRAME_WIDTH, 10000);
 	capture.set(CAP_PROP_FRAME_HEIGHT, 10000);
@@ -186,7 +190,7 @@ int main(int, char**)
 		}
 
 		{
-            
+
 			tbb::parallel_invoke(
 				[]
 			{
@@ -196,18 +200,18 @@ int main(int, char**)
 				lbpAnnotations.clear();
 				lbpAnnotations = localAnnotations;
 			},
-			
+
 				[]
 			{
-				vector<Rect> localDetects;
-				textAnnotator.detectWithMorphologicalGradient(localDetects, frame_gray);
-				textDetects.clear();
-				textDetects = localDetects;
+				vector<Annotation> localAnnotations;
+				textAnnotator.predictWithTESSERACT(localAnnotations, frame_gray);
+				textAnnotations.clear();
+				textAnnotations = localAnnotations;
 			}
 			);
 
 		}
-		
+
 		{
 			vector<vector<Point>> localContours;
 			vector<Rect> localDetects;
@@ -232,7 +236,7 @@ int main(int, char**)
 			{
 				localAnnotations.push_back(objectsAnnotator.predictWithCAFFEInRectangle(objectsDetects[i], frame));
 			}
-			
+
 			caffeAnnotations.clear();
 			caffeAnnotations = localAnnotations;*/
 
@@ -243,34 +247,29 @@ int main(int, char**)
 		allAnnotations.insert(allAnnotations.end(), textAnnotations.begin(), textAnnotations.end());
 		allAnnotations.insert(allAnnotations.end(), caffeAnnotations.begin(), caffeAnnotations.end());
 
-		EnvReset(theEnv);
+		EnvReset(theCLIPSEnv);
 		//define new facts here
 		stringstream  fact;
 		for (auto& annot : allAnnotations)
 		{
-			AddDetectFact2(theEnv, "human", annot.getRectangle(), annot.getDescription());
+			AddDetectFact2(theCLIPSEnv, annot.getType(), annot.getRectangle(), annot.getDescription());
 
 			rectangle(frame, annot.getRectangle(), CV_RGB(0, 255, 0), 1);
 			putText(frame, annot.getDescription(), Point(annot.getRectangle().x, annot.getRectangle().y - 20), CV_FONT_NORMAL, 1.0, CV_RGB(0, 255, 0), 1);
-			
+
 		}
 
-		for (auto& rect : textDetects)
-		{
-			AddDetectFact2(theEnv, "text", rect, "text");
-			rectangle(frame, rect, CV_RGB(255, 0, 0), 1);
-		}
 		if (objectContours.size() > 0)
 		{
 			for (auto c : objectContours)
 			{
-				AddDetectFact2(theEnv, "contour", boundingRect(Mat(c)), "contour");
+				AddDetectFact2(theCLIPSEnv, "contour", boundingRect(Mat(c)), "contour");
 			}
-			
-			drawContours(frame, objectContours, -1, CV_RGB(255, 213, 21),2);
+
+			drawContours(frame, objectContours, -1, CV_RGB(255, 213, 21), 2);
 		}
-		EnvRun(theEnv, -1);
-		EnvEval(theEnv, "(facts)", &rv);
+		EnvRun(theCLIPSEnv, -1);
+		EnvEval(theCLIPSEnv, "(facts)", &rv);
 		imshow(window_name, frame);
 		fc++;
 		//-- bail out if escape was pressed
@@ -280,7 +279,9 @@ int main(int, char**)
 		}
 
 	}
-	DestroyEnvironment(theEnv);
+
+	DestroyEnvironment(theCLIPSEnv);
+
 	exit(0);
 }
 

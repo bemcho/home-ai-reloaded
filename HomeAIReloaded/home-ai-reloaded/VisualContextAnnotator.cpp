@@ -4,6 +4,7 @@
 VisualContextAnnotator::VisualContextAnnotator()
 {
 	model = face::createLBPHFaceRecognizer();
+	tess = shared_ptr<tesseract::TessBaseAPI>(new  tesseract::TessBaseAPI);
 }
 
 
@@ -12,6 +13,7 @@ VisualContextAnnotator::~VisualContextAnnotator()
 	cascade_classifier.~CascadeClassifier();
 	model.release();
 	net.~Net();
+	tess->End();
 }
 
 void VisualContextAnnotator::loadCascadeClassifier(const string cascadeClassifierPath)
@@ -25,6 +27,11 @@ void VisualContextAnnotator::loadLBPModel(const string path, double maxDistance)
 {
 	model->load(path);
 	this->maxDistance = maxDistance;
+}
+
+void VisualContextAnnotator::loadTESSERACTModel(const char* dataPath, const char* lang, tesseract::OcrEngineMode mode)
+{
+	tess->Init(dataPath, lang, tesseract::OEM_TESSERACT_CUBE_COMBINED);
 }
 
 void VisualContextAnnotator::loadCAFFEModel(const string modelBinPath, const string modelProtoTextPath, const string synthWordPath)
@@ -52,6 +59,7 @@ void VisualContextAnnotator::loadCAFFEModel(const string modelBinPath, const str
 	importer.release();
 	classNames = readClassNames(synthWordPath);
 }
+
 void VisualContextAnnotator::detectWithCascadeClassifier(vector<Rect>& result, Mat & frame_gray, Size minSize)
 {
 	cascade_classifier.detectMultiScale(frame_gray, result, 1.1, 3, 0, minSize, Size());
@@ -65,10 +73,6 @@ void VisualContextAnnotator::detectWithMorphologicalGradient(vector<Rect>& resul
 		// morphological gradient
 		Mat grad;
 		Mat morphKernel = getStructuringElement(MORPH_ELLIPSE, Size(3, 3));
-
-
-
-
 		morphologyEx(frame_gray, grad, MORPH_GRADIENT, morphKernel);
 		// binarize
 		Mat bw;
@@ -173,7 +177,7 @@ Annotation VisualContextAnnotator::predictWithLBPInRectangle(const Rect& detect,
 	{
 		fmt << "Unknown Human" << "L:" << predictedLabel << "C:" << confidence;
 	}
-	return Annotation(detect, fmt.str());
+	return Annotation(detect, fmt.str(), "human");
 }
 
 struct PredictWithLBPBody {
@@ -251,7 +255,7 @@ Annotation VisualContextAnnotator::predictWithCAFFEInRectangle(const Rect & dete
 	// critical section here
 	cs.unlock();
 
-	return Annotation(detect, caffe_fmt.str());
+	return Annotation(detect, caffe_fmt.str(), classNames.at(classId));
 }
 
 struct PredictWithCAFFEBody {
@@ -329,3 +333,79 @@ std::vector<String> VisualContextAnnotator::readClassNames(const string filename
 	fp.close();
 	return classNames;
 }
+
+
+Annotation VisualContextAnnotator::predictWithTESSERACTInRectangle(const Rect & detect, Mat & frame_gray)
+{
+	static tbb::critical_section cs;
+	cv::Mat sub = frame_gray(detect).clone();
+	Annotation annot;
+
+	cs.lock();
+	tess->SetImage((uchar*)sub.data, sub.size().width, sub.size().height, sub.channels(), sub.step1());
+	if (tess->Recognize(0) == 0)
+	{
+		char* text = tess->GetUTF8Text();
+		string strText(text);
+		;
+		annot = Annotation(detect, strText.substr(0, strText.size() - 2), "text");
+		delete[] text;
+	}
+	else
+	{
+		annot = Annotation(detect, "object", "contour");
+	}
+	cs.unlock();
+	
+	return annot;
+}
+struct PredictWithTESSERACTBody {
+	VisualContextAnnotator & vca_;
+	vector<Rect> detects_;
+	Mat& frame_gray_;
+	Annotation* result_;
+	PredictWithTESSERACTBody(VisualContextAnnotator & u, vector<Rect> detects, Mat& frame_gray) :vca_(u), detects_(detects), frame_gray_(frame_gray) {}
+	void operator()(const tbb::blocked_range<long>& range) const {
+		for (long i = range.begin(); i != range.end(); ++i)
+		{
+			result_[i] = vca_.predictWithTESSERACTInRectangle(detects_[i], frame_gray_);
+		}
+	}
+};
+
+void VisualContextAnnotator::predictWithTESSERACT(vector<Annotation>& annotations, cv::Mat & frame_gray)
+{
+	static tbb::affinity_partitioner affinityTESSERACT;
+
+	vector<Rect> detects;
+	detectWithMorphologicalGradient(detects, frame_gray);
+	PredictWithTESSERACTBody parallelTESSERACT(*this, detects, frame_gray);
+
+	const long tsize = detects.size();
+
+	parallelTESSERACT.result_ = new Annotation[tsize];
+	vector<Annotation> result(tsize);
+	tbb::parallel_for(tbb::blocked_range<long>(0, tsize), // Index space for loop
+		parallelTESSERACT,                    // Body of loop
+		affinityTESSERACT);
+
+	annotations = vector<Annotation>(parallelTESSERACT.result_, parallelTESSERACT.result_ + tsize);
+}
+
+void VisualContextAnnotator::predictWithTESSERACT(vector<Annotation>& annotations, vector<Rect> detects, cv::Mat & frame_gray)
+{
+	const long tsize = detects.size();
+	if (tsize <= 0)
+		return;
+	static tbb::affinity_partitioner affinityTESSERACT2;
+	PredictWithTESSERACTBody parallelTESSERACT(*this, detects, frame_gray);
+
+	parallelTESSERACT.result_ = new Annotation[tsize];
+	vector<Annotation> result(tsize);
+	tbb::parallel_for(tbb::blocked_range<long>(0, tsize), // Index space for loop
+		parallelTESSERACT,                    // Body of loop
+		affinityTESSERACT2);
+
+	annotations = vector<Annotation>(parallelTESSERACT.result_, parallelTESSERACT.result_ + tsize);
+}
+
