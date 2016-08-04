@@ -1,4 +1,4 @@
-![My image](https://github.com/bemcho/home-ai-reloaded/blob/master/tesseract-demo.png)
+![My image](https://github.com/bemcho/home-ai-reloaded/blob/master/home-ai-demo.png)
 # home-ai-reloaded
 home-ai rewriten in c++
 ##So far you can not train with this implementation
