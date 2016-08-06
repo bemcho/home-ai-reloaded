@@ -24,32 +24,38 @@
     <ClCompile Include="..\home-ai-reloaded\Annotation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="VisualREPL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\home-ai-reloaded\Annotation.h">
+    <ClInclude Include="..\home-ai-reloaded\Annotation.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\home-ai-reloaded\VisualContextAnnotator.h">
+    <ClInclude Include="..\home-ai-reloaded\VisualContextAnnotator.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VisualREPL.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\home-ai-reloaded\bvlc_googlenet.caffemodel">
-      <Filter>Source Files</Filter>
-    </None>
-    <None Include="..\home-ai-reloaded\bvlc_googlenet.prototxt">
-      <Filter>Source Files</Filter>
-    </None>
     <None Include="..\home-ai-reloaded\HomeAIReloaded.vcxproj">
       <Filter>Source Files</Filter>
     </None>
     <None Include="..\home-ai-reloaded\HomeAIReloaded.vcxproj.filters">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="..\home-ai-reloaded\bvlc_googlenet.caffemodel">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="..\home-ai-reloaded\bvlc_googlenet.prototxt">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\home-ai-reloaded\synset_words.txt">
-      <Filter>Source Files</Filter>
+      <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>
 </Project>

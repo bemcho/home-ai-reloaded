@@ -6,9 +6,9 @@
 #include "opencv2/videoio.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
-#include "Annotation.h"
+#include "Annotation.hpp"
 #include "tesseract/baseapi.h"
-#include "VisualContextAnnotator.h"
+#include "VisualContextAnnotator.hpp"
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_invoke.h"
 #include "clips/clips.h"
@@ -16,9 +16,11 @@
 #include <fstream>
 #include <iostream>
 #include <cstdlib>
+#include <thread>
+#include <chrono>
 
 using namespace std;
-
+using namespace hai;
 
 String face_cascade_name = "cascade_frontalface.xml";
 String window_name = "Capture - Face detection";
@@ -135,7 +137,7 @@ int main(int, char**)
 		" )";
 	EnvBuild(theCLIPSEnv, cs);
 
-	textAnnotator.loadTESSERACTModel("..\\Release/", "eng", tesseract::OEM_TESSERACT_CUBE_COMBINED);
+	textAnnotator.loadTESSERACTModel("..\\Release/", "eng");
 
 	String modelTxt = "bvlc_googlenet.prototxt";
 	String modelBin = "bvlc_googlenet.caffemodel";
@@ -173,7 +175,7 @@ int main(int, char**)
 
 	capture.set(CAP_PROP_FRAME_WIDTH, (capture.get(CAP_PROP_FRAME_WIDTH) / 2) <= 1280 ? 1280 : capture.get(CAP_PROP_FRAME_WIDTH) / 2);
 	capture.set(CAP_PROP_FRAME_HEIGHT, (capture.get(CAP_PROP_FRAME_HEIGHT) / 2) <= 720 ? 720 : capture.get(CAP_PROP_FRAME_HEIGHT) / 2);
-	CAFFERect = Rect((capture.get(CAP_PROP_FRAME_WIDTH) / 2) - 250, (capture.get(CAP_PROP_FRAME_HEIGHT) / 2) - 250, 300, 300);
+	CAFFERect = Rect((capture.get(CAP_PROP_FRAME_WIDTH) / 2.0) - 250, (capture.get(CAP_PROP_FRAME_HEIGHT) / 2.0) - 250, 300, 300);
 	long fc = 6;
 
 	while (true)
@@ -189,28 +191,26 @@ int main(int, char**)
 			break;
 		}
 
+
+		tbb::parallel_invoke(
+			[]
 		{
+			vector<Annotation> localAnnotations;
+			faceDetects.clear();
+			faceAnnotator.predictWithLBP(localAnnotations, frame_gray);
+			lbpAnnotations.clear();
+			lbpAnnotations = localAnnotations;
+		},
 
-			tbb::parallel_invoke(
-				[]
-			{
-				vector<Annotation> localAnnotations;
-				faceDetects.clear();
-				faceAnnotator.predictWithLBP(localAnnotations, frame_gray);
-				lbpAnnotations.clear();
-				lbpAnnotations = localAnnotations;
-			},
-
-				[]
-			{
-				vector<Annotation> localAnnotations;
-				textAnnotator.predictWithTESSERACT(localAnnotations, frame_gray);
-				textAnnotations.clear();
-				textAnnotations = localAnnotations;
-			}
-			);
-
+			[]
+		{
+			vector<Annotation> localAnnotations;
+			textAnnotator.predictWithTESSERACT(localAnnotations, frame_gray);
+			textAnnotations.clear();
+			textAnnotations = localAnnotations;
 		}
+		);
+
 
 		{
 			vector<vector<Point>> localContours;
@@ -277,12 +277,11 @@ int main(int, char**)
 		{
 			break;
 		}
-
 	}
-
+	std::this_thread::sleep_for(std::chrono::seconds(5));
 	DestroyEnvironment(theCLIPSEnv);
-
-	exit(0);
+	
+	return EXIT_SUCCESS;
 }
 
 
