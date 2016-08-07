@@ -163,15 +163,14 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\home-ai-reloaded\Annotation.cpp" />
     <ClCompile Include="..\home-ai-reloaded\home_ai_visual_repl.cpp" />
     <ClCompile Include="..\home-ai-reloaded\VisualContextAnnotator.cpp" />
-    <ClCompile Include="VisualREPL.cpp" />
+    <ClCompile Include="..\home-ai-reloaded\VisualREPL.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\home-ai-reloaded\Annotation.hpp" />
     <ClInclude Include="..\home-ai-reloaded\VisualContextAnnotator.hpp" />
-    <ClInclude Include="VisualREPL.hpp" />
+    <ClInclude Include="..\home-ai-reloaded\VisualREPL.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\home-ai-reloaded\bvlc_googlenet.caffemodel" />

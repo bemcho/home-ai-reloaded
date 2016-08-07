@@ -64,7 +64,7 @@ namespace hai
 		classNames = readClassNames(synthWordPath);
 	}
 
-	void VisualContextAnnotator::detectWithCascadeClassifier(vector<Rect>& result,const Mat & frame_gray, Size minSize)noexcept
+	void VisualContextAnnotator::detectWithCascadeClassifier(vector<Rect>& result, const Mat & frame_gray, Size minSize)noexcept
 	{
 		cascade_classifier->detectMultiScale(frame_gray, result, 1.1, 3, 0, minSize, Size());
 	}
@@ -175,11 +175,11 @@ namespace hai
 		{
 			model->predict(face, predictedLabel, confidence);
 		}
-		catch(...)
+		catch (...)
 		{
 
 		}
-		
+
 		std::stringstream fmt;
 		if (predictedLabel > 0 && confidence <= maxDistance)
 		{
@@ -242,40 +242,30 @@ namespace hai
 
 	Annotation VisualContextAnnotator::predictWithCAFFEInRectangle(const Rect & detect, const  Mat & frame) noexcept
 	{
-		try
-		{
-			cv::Mat img;
-			img = Scalar::all(0);
+		cv::Mat img;
+		img = Scalar::all(0);
 
-			resize(frame(detect), img, Size(244, 244));
+		resize(frame(detect), img, Size(244, 244));
 
-			tbb::critical_section cs;
+		tbb::critical_section cs;
 
-			cs.lock();
-			dnn::Blob inputBlob;
-			dnn::Blob prob;
-			inputBlob = dnn::Blob(img);
-			//Convert Mat to dnn::Blob image batch
-			net->setBlob(".data", inputBlob);        //set the network input
-			net->forward();                          //compute output
-			prob = net->getBlob("prob");
-			int classId;
-			double classProb;
-			getMaxClass(prob, classId, classProb);//find the best class
-			stringstream caffe_fmt = stringstream();
-			caffe_fmt << "P: " << classProb * 100 << "%" << std::endl;
-			caffe_fmt << "Class: #" << classId << " '" << classNames.at(classId) << "'" << std::endl;
-			// critical section here
-			cs.unlock();
-			return Annotation(detect, caffe_fmt.str(), classNames.at(classId));
-		}
-		catch (...)
-		{
-			return Annotation();
-		}
-		
-
-		
+		cs.lock();
+		dnn::Blob inputBlob;
+		dnn::Blob prob;
+		inputBlob = dnn::Blob(img);
+		//Convert Mat to dnn::Blob image batch
+		net->setBlob(".data", inputBlob);        //set the network input
+		net->forward();                          //compute output
+		prob = net->getBlob("prob");
+		int classId;
+		double classProb;
+		getMaxClass(prob, classId, classProb);//find the best class
+		stringstream caffe_fmt = stringstream();
+		caffe_fmt << "P: " << classProb * 100 << "%" << std::endl;
+		caffe_fmt << "Class: #" << classId << " '" << classNames.at(classId) << "'" << std::endl;
+		// critical section here
+		cs.unlock();
+		return Annotation(detect, caffe_fmt.str(), classNames.at(classId));
 	}
 
 	struct PredictWithCAFFEBody {
@@ -356,31 +346,22 @@ namespace hai
 
 	Annotation VisualContextAnnotator::predictWithTESSERACTInRectangle(const Rect & detect, const Mat & frame_gray) noexcept
 	{
-
 		static tbb::critical_section cs;
-		Annotation annot;
-		try
-		{
-			cs.lock();
+		cs.lock();
 			Mat sub = frame_gray(detect).clone();
-
 			tess->SetImage((uchar*)sub.data, sub.size().width, sub.size().height, sub.channels(), sub.step1());
-			if (tess->Recognize(0) == 0)
-			{
-				string strText(tess->GetUTF8Text());
-				annot = Annotation(detect, strText.substr(0, strText.size() - 2), "text");
-			}
-			else
-			{
-				annot = Annotation(detect, "object", "contour");
-			}
-			cs.unlock();
-		}
-		catch (...)
+			int result = tess->Recognize(0);
+			string strText(tess->GetUTF8Text());
+		cs.unlock();
+		if (result == 0)
 		{
-
+			return Annotation(detect, strText.substr(0, strText.size() - 2), "text");
 		}
-		return annot;
+		else
+		{
+			return Annotation(detect, "object", "contour");
+		}
+		
 	}
 	struct PredictWithTESSERACTBody {
 		VisualContextAnnotator & vca_;
@@ -421,7 +402,7 @@ namespace hai
 		const size_t tsize = detects.size();
 		if (tsize <= 0)
 			return;
-	
+
 		PredictWithTESSERACTBody parallelTESSERACT(*this, detects, frame_gray, tsize);
 
 		tbb::parallel_for(tbb::blocked_range<size_t>(0, tsize), // Index space for loop

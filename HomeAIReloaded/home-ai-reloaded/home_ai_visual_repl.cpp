@@ -231,15 +231,14 @@ int main(int, char**)
 
 		if (fc % 30 == 0)
 		{
-			/*vector<Annotation> localAnnotations;
+			vector<Annotation> localAnnotations;
 			for (int i = 0;i < 3 && i < objectsDetects.size();i++)
 			{
 				localAnnotations.push_back(objectsAnnotator.predictWithCAFFEInRectangle(objectsDetects[i], frame));
 			}
 
 			caffeAnnotations.clear();
-			caffeAnnotations = localAnnotations;*/
-
+			caffeAnnotations = localAnnotations;
 		}
 
 		vector<Annotation> allAnnotations;
