@@ -229,7 +229,7 @@ int main(int, char**)
 			objectsDetects = localDetects;
 		}
 
-		if (fc % 30 == 0)
+		/*if (fc % 30 == 0)
 		{
 			vector<Annotation> localAnnotations;
 			for (int i = 0;i < 3 && i < objectsDetects.size();i++)
@@ -239,7 +239,7 @@ int main(int, char**)
 
 			caffeAnnotations.clear();
 			caffeAnnotations = localAnnotations;
-		}
+		}*/
 
 		vector<Annotation> allAnnotations;
 		allAnnotations = lbpAnnotations;
