@@ -169,6 +169,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\home-ai-reloaded\Annotation.hpp" />
+    <ClInclude Include="..\home-ai-reloaded\ClipsAdapter.hpp" />
     <ClInclude Include="..\home-ai-reloaded\VisualContextAnnotator.hpp" />
     <ClInclude Include="..\home-ai-reloaded\VisualREPL.hpp" />
   </ItemGroup>

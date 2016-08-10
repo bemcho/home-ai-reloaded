@@ -35,6 +35,9 @@
     <ClInclude Include="..\home-ai-reloaded\VisualREPL.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\home-ai-reloaded\ClipsAdapter.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\home-ai-reloaded\HomeAIReloaded.vcxproj">
