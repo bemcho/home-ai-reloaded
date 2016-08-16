@@ -7,14 +7,12 @@ namespace hai
 	{
 	public:
 		Annotation() {}
-		Annotation(cv::Rect rect, std::string desc, std::string type) : description(desc), rectangle(rect), type(type){}
-		virtual ~Annotation() {};
-		std::string getDescription() { return description; }
-		std::string getType() { return type; }
-		cv::Rect getRectangle() { return rectangle;}
-		void setDescription(std::string desc) { description = desc; }
-		void setRectangle(cv::Rect rect) { rectangle = rect; }
-		void setType(std::string type) { this->type = type; }
+		Annotation(cv::Rect rect, std::string desc, std::string type) : description(desc), rectangle(rect), type(type) {}
+		~Annotation() {};
+		inline const std::string getDescription() noexcept { return description; } 
+		inline const std::string getType() noexcept { return type; } 
+		inline const cv::Rect getRectangle() noexcept { return rectangle; }  
+
 	private:
 		cv::Rect rectangle;
 		std::string description;

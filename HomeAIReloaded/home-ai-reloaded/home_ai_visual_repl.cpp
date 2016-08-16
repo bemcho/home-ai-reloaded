@@ -31,7 +31,6 @@ String clips_vca_rules = "visualcontextrules.clp";
 
 ClipsAdapter clips(clips_vca_rules);
 
-DATA_OBJECT rv;
 Rect_<int> CAFFERect;
 Mat frame, frame_gray;
 bool drawFaceDetectsToWindow = true;
@@ -51,79 +50,7 @@ VisualContextAnnotator textAnnotator;
 VisualContextAnnotator objectsAnnotator;
 int lowThreshold = 77;
 
-//void AddDetectFact2(void *environment, string type, Rect at, string ontology)
-//{
-//	void *newFact;
-//	void *templatePtr;
-//	void *theMultifield;
-//	DATA_OBJECT theValue;
-//	/*============================================================*/
-//	/* Disable garbage collection. It's only necessary to disable */
-//	/* garbage collection when calls are made into CLIPS from an */
-//	/* embedding program. It's not necessary to do this when the */
-//	/* the calls to user code are made by CLIPS (such as for */
-//	/* user-defined functions) or in the case of this example, */
-//	/* there are no calls to functions which can trigger garbage */
-//	/* collection (such as Send or FunctionCall). */
-//	/*============================================================*/
-//	//IncrementGCLocks(environment);
-//	/*==================*/
-//	/* Create the fact. */
-//	/*==================*/
-//	templatePtr = EnvFindDeftemplate(environment, "visualdetect");
-//	newFact = EnvCreateFact(environment, templatePtr);
-//	if (newFact == NULL) return;
-//	/*==============================*/
-//	/* Set the value of the type slot. */
-//	/*==============================*/
-//	theValue.type = SYMBOL;
-//	theValue.value = EnvAddSymbol(environment, type.c_str());
-//	EnvPutFactSlot(environment, newFact, "type", &theValue);
-//	/*==============================*/
-//	/* Set the value of the z slot. */
-//	/*==============================*/
-//	theMultifield = EnvCreateMultifield(environment, 4);
-//	SetMFType(theMultifield, 1, INTEGER);
-//	SetMFValue(theMultifield, 1, EnvAddLong(environment, at.x));
-//
-//	SetMFType(theMultifield, 2, INTEGER);
-//	SetMFValue(theMultifield, 2, EnvAddLong(environment, at.y));
-//
-//	SetMFType(theMultifield, 3, INTEGER);
-//	SetMFValue(theMultifield, 3, EnvAddLong(environment, at.width));
-//
-//	SetMFType(theMultifield, 4, INTEGER);
-//	SetMFValue(theMultifield, 4, EnvAddLong(environment, at.height));
-//
-//
-//	SetDOBegin(theValue, 1);
-//	SetDOEnd(theValue, 4);
-//	theValue.type = MULTIFIELD;
-//	theValue.value = theMultifield;
-//	EnvPutFactSlot(environment, newFact, "at", &theValue);
-//	/*==============================*/
-//	/* Set the value of the what slot. */
-//	/*==============================*/
-//	theValue.type = SYMBOL;
-//	stringstream onto;
-//	onto << "\"" << ontology << "\"";
-//	theValue.value = EnvAddSymbol(environment, onto.str().c_str());
-//	EnvPutFactSlot(environment, newFact, "ontology", &theValue);
-//	/*=================================*/
-//	/* Assign default values since all */
-//	/* slots were not initialized. */
-//	/*=================================*/
-//	EnvAssignFactSlotDefaults(environment, newFact);
-//	/*==========================================================*/
-//	/* Enable garbage collection. Each call to IncrementGCLocks */
-//	/* should have a corresponding call to DecrementGCLocks. */
-//	/*==========================================================*/
-//	//EnvDecrementGCLocks(environment);
-//	/*==================*/
-//	/* Assert the fact. */
-//	/*==================*/
-//	EnvAssert(environment, newFact);
-//}
+
 /**
 * @function main
 */
@@ -240,27 +167,41 @@ int main(int, char**)
 		allAnnotations.insert(allAnnotations.end(), caffeAnnotations.begin(), caffeAnnotations.end());
 
 		clips.envReset();
-
+		DATA_OBJECT rv;
 		//define new facts here
 		stringstream  fact;
-		for (auto& annot : allAnnotations)
+		tbb::parallel_invoke(
+			[&]
 		{
-			clips.callFactCreateFN(annot);
+			clips.callFactCreateFN(allAnnotations);
 
-			rectangle(frame, annot.getRectangle(), CV_RGB(0, 255, 0), 1);
-			putText(frame, annot.getDescription(), Point(annot.getRectangle().x, annot.getRectangle().y - 20), CV_FONT_NORMAL, 1.0, CV_RGB(0, 255, 0), 1);
-
-		}
-
-		if (objectContours.size() > 0)
-		{
-			for (auto c : objectContours)
+			if (objectContours.size() > 0)
 			{
-				clips.callFactCreateFN(Annotation(boundingRect(Mat(c)), "contour", "contour"));
-			}
+				for (auto& c : objectContours)
+				{
+					clips.callFactCreateFN(Annotation(boundingRect(Mat(c)), "contour", "contour"));
+				}
 
+				
+			}
+		},
+
+			[&]
+		{
+			for (auto& annot : allAnnotations)
+			{
+				rectangle(frame, annot.getRectangle(), CV_RGB(0, 255, 0), 1);
+				putText(frame, annot.getDescription(), Point(annot.getRectangle().x, annot.getRectangle().y - 20), CV_FONT_NORMAL, 1.0, CV_RGB(0, 255, 0), 1);
+			}
+		},
+			[]
+		{
 			drawContours(frame, objectContours, -1, CV_RGB(255, 213, 21), 2);
 		}
+		);
+		
+
+		
 		clips.envRun();
 		clips.envEval("(facts)", rv);
 		imshow(window_name, frame);
@@ -271,7 +212,6 @@ int main(int, char**)
 			break;
 		}
 	}
-	std::this_thread::sleep_for(std::chrono::seconds(5));
 	
 
 	return EXIT_SUCCESS;

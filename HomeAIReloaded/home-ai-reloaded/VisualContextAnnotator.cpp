@@ -171,14 +171,8 @@ namespace hai
 		Mat face = frame_gray(detect);
 		int predictedLabel = -1;
 		double confidence = 0.0;
-		try
-		{
-			model->predict(face, predictedLabel, confidence);
-		}
-		catch (...)
-		{
 
-		}
+		model->predict(face, predictedLabel, confidence);
 
 		std::stringstream fmt;
 		if (predictedLabel > 0 && confidence <= maxDistance)
@@ -348,10 +342,10 @@ namespace hai
 	{
 		static tbb::critical_section cs;
 		cs.lock();
-			Mat sub = frame_gray(detect).clone();
-			tess->SetImage((uchar*)sub.data, sub.size().width, sub.size().height, sub.channels(), sub.step1());
-			int result = tess->Recognize(0);
-			string strText(tess->GetUTF8Text());
+		Mat sub = frame_gray(detect).clone();
+		tess->SetImage((uchar*)sub.data, sub.size().width, sub.size().height, sub.channels(), sub.step1());
+		int result = tess->Recognize(0);
+		string strText(tess->GetUTF8Text());
 		cs.unlock();
 		if (result == 0)
 		{
@@ -361,7 +355,7 @@ namespace hai
 		{
 			return Annotation(detect, "object", "contour");
 		}
-		
+
 	}
 	struct PredictWithTESSERACTBody {
 		VisualContextAnnotator & vca_;

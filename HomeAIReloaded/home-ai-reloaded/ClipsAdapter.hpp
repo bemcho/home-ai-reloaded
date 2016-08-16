@@ -19,7 +19,7 @@ namespace hai
 		};
 		~ClipsAdapter() { DestroyEnvironment(theCLIPSEnv); };
 
-		inline void callFactCreateFN(Annotation annotation) noexcept { defaultFactCreateFN(annotation); };
+		inline void callFactCreateFN( Annotation annotation) noexcept { addDetectFact2(theCLIPSEnv, annotation.getType(), annotation.getRectangle(), annotation.getDescription()); };
 		inline void callFactCreateFN(const vector<Annotation>& annotations) noexcept
 		{
 			for (const auto& a : annotations)
@@ -44,8 +44,6 @@ namespace hai
 					" (slot ontology)"
 				" )";
 		}
-
-		inline void defaultFactCreateFN(Annotation annotation) noexcept { addDetectFact2(theCLIPSEnv, annotation.getType(), annotation.getRectangle(), annotation.getDescription()); }
 
 		void addDetectFact2(void *environment, const string& type, const cv::Rect& at, const string& ontology) noexcept
 		{
