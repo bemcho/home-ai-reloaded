@@ -11,31 +11,43 @@ namespace hai
 	class ClipsAdapter
 	{
 	public:
-		ClipsAdapter(const string& rulesFilePath, function<void(const Annotation&)> factCreateFN, function<string(void)> deftemplateFN) {}; //factCreate and deftemplate in  one abstraction as they are tight coupled/dependent?
+		ClipsAdapter(const string aRulesFilePath) : rulesFilePath{ aRulesFilePath }
+		{
+			theCLIPSEnv = CreateEnvironment();
+			EnvBuild(theCLIPSEnv, defaultDeftemplateFN().c_str());
+			EnvLoad(theCLIPSEnv, aRulesFilePath.c_str());
+		};
 		~ClipsAdapter() { DestroyEnvironment(theCLIPSEnv); };
-		void callFactCreateFN(const Annotation& annotation) noexcept {};
-		void callFactCreateFN(const vector<Annotation>& annotations) noexcept {};
-		void envReset() noexcept { EnvReset(theCLIPSEnv); };
-		void envRun() noexcept { EnvRun(theCLIPSEnv, -1); };
-		void envEval(string clipsCommand, DATA_OBJECT& result) noexcept { EnvEval(theCLIPSEnv, clipsCommand.c_str(), &result); };
+
+		inline void callFactCreateFN(Annotation annotation) noexcept { defaultFactCreateFN(annotation); };
+		inline void callFactCreateFN(const vector<Annotation>& annotations) noexcept
+		{
+			for (const auto& a : annotations)
+			{
+				callFactCreateFN(a);
+			}
+		};
+
+		inline	void envReset() noexcept { EnvReset(theCLIPSEnv); };
+		inline	void envRun() noexcept { EnvRun(theCLIPSEnv, -1); };
+		inline	void envEval(string clipsCommand, DATA_OBJECT& result) noexcept { EnvEval(theCLIPSEnv, clipsCommand.c_str(), &result); };
 
 	private:
 		cv::Ptr<void> theCLIPSEnv;
-		function<void(const Annotation&)> factCreateFN;
-		function<string(void)> deftemplateFN;
 		string rulesFilePath;
-		DATA_OBJECT rv;
 
-		string getDefaultDeftemplate() noexcept
+		string defaultDeftemplateFN(void) noexcept
 		{
 			return "(deftemplate visualdetect"
-				" (slot type (default object))"
-				" (multislot at)"
-				" (slot ontology)"
+					" (slot type (default object))"
+					" (multislot at)"
+					" (slot ontology)"
 				" )";
 		}
 
-		void addDetectFact2(void *environment, string type, cv::Rect at, string ontology) noexcept
+		inline void defaultFactCreateFN(Annotation annotation) noexcept { addDetectFact2(theCLIPSEnv, annotation.getType(), annotation.getRectangle(), annotation.getDescription()); }
+
+		void addDetectFact2(void *environment, const string& type, const cv::Rect& at, const string& ontology) noexcept
 		{
 			void *newFact;
 			void *templatePtr;
@@ -108,7 +120,5 @@ namespace hai
 			/*==================*/
 			EnvAssert(environment, newFact);
 		}
-
-		void init() {};
 	};
 }
