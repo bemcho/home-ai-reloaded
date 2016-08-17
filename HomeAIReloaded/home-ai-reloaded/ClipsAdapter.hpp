@@ -19,12 +19,12 @@ namespace hai
 		};
 		~ClipsAdapter() { DestroyEnvironment(theCLIPSEnv); };
 
-		inline void callFactCreateFN( Annotation annotation) noexcept { addDetectFact2(theCLIPSEnv, annotation.getType(), annotation.getRectangle(), annotation.getDescription()); };
-		inline void callFactCreateFN(const vector<Annotation>& annotations) noexcept
+		inline void callFactCreateFN(Annotation& annotation, const string& visualRepl) noexcept { addDetectFact2(theCLIPSEnv, annotation, visualRepl); };
+		inline void callFactCreateFN(vector<Annotation>& annotations, const string& visualRepl) noexcept
 		{
-			for (const auto& a : annotations)
+			for (auto& a : annotations)
 			{
-				callFactCreateFN(a);
+				callFactCreateFN(a, visualRepl);
 			}
 		};
 
@@ -39,13 +39,14 @@ namespace hai
 		string defaultDeftemplateFN(void) noexcept
 		{
 			return "(deftemplate visualdetect"
-					" (slot type (default object))"
-					" (multislot at)"
-					" (slot ontology)"
+				" (slot type (default object))"
+				" (multislot rectangle)"
+				" (slot ontology)"
+				" (slot at)"
 				" )";
 		}
 
-		void addDetectFact2(void *environment, const string& type, const cv::Rect& at, const string& ontology) noexcept
+		void addDetectFact2(void *environment, Annotation& a, const string& visualRepl) noexcept
 		{
 			void *newFact;
 			void *templatePtr;
@@ -71,11 +72,12 @@ namespace hai
 			/* Set the value of the type slot. */
 			/*==============================*/
 			theValue.type = SYMBOL;
-			theValue.value = EnvAddSymbol(environment, type.c_str());
+			theValue.value = EnvAddSymbol(environment, a.getType().c_str());
 			EnvPutFactSlot(environment, newFact, "type", &theValue);
 			/*==============================*/
 			/* Set the value of the z slot. */
 			/*==============================*/
+			cv::Rect at = a.getRectangle();
 			theMultifield = EnvCreateMultifield(environment, 4);
 			SetMFType(theMultifield, 1, INTEGER);
 			SetMFValue(theMultifield, 1, EnvAddLong(environment, at.x));
@@ -94,15 +96,23 @@ namespace hai
 			SetDOEnd(theValue, 4);
 			theValue.type = MULTIFIELD;
 			theValue.value = theMultifield;
-			EnvPutFactSlot(environment, newFact, "at", &theValue);
+			EnvPutFactSlot(environment, newFact, "rectangle", &theValue);
 			/*==============================*/
 			/* Set the value of the what slot. */
 			/*==============================*/
 			theValue.type = SYMBOL;
 			stringstream onto;
-			onto << "\"" << ontology << "\"";
+			onto << "\"" << a.getDescription() << "\"";
 			theValue.value = EnvAddSymbol(environment, onto.str().c_str());
 			EnvPutFactSlot(environment, newFact, "ontology", &theValue);
+			/*==============================*/
+			/* Set the value of the what slot. */
+			/*==============================*/
+			theValue.type = SYMBOL;
+			stringstream repl;
+			repl << "\"" << visualRepl << "\"";
+			theValue.value = EnvAddSymbol(environment, repl.str().c_str());
+			EnvPutFactSlot(environment, newFact, "at", &theValue);
 			/*=================================*/
 			/* Assign default values since all */
 			/* slots were not initialized. */

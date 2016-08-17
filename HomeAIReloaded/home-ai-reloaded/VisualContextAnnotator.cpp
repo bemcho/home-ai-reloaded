@@ -172,7 +172,15 @@ namespace hai
 		int predictedLabel = -1;
 		double confidence = 0.0;
 
-		model->predict(face, predictedLabel, confidence);
+		try
+		{
+			model->predict(face, predictedLabel, confidence);
+		}
+		catch (...)
+		{
+			cout << *current_exception << endl;
+		}
+		
 
 		std::stringstream fmt;
 		if (predictedLabel > 0 && confidence <= maxDistance)
@@ -215,7 +223,7 @@ namespace hai
 			parallelLBP,                    // Body of loop
 			affinityLBP);
 
-		annotations = parallelLBP.result_;
+		annotations = vector<Annotation>(parallelLBP.result_);
 	}
 
 	void VisualContextAnnotator::predictWithLBP(vector<Annotation>& annotations, const  vector<Rect> detects, const Mat & frame_gray) noexcept
@@ -231,7 +239,7 @@ namespace hai
 			parallelLBP,                    // Body of loop
 			affinityLBP2);
 
-		annotations = parallelLBP.result_;
+		annotations = vector<Annotation>(parallelLBP.result_);
 	}
 
 	Annotation VisualContextAnnotator::predictWithCAFFEInRectangle(const Rect & detect, const  Mat & frame) noexcept

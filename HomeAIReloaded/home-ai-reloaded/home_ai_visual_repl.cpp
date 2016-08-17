@@ -12,6 +12,8 @@
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_invoke.h"
 #include "ClipsAdapter.hpp"
+#include "VisualREPL.hpp"
+#include "ClipsAdapter.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -97,7 +99,8 @@ int main(int, char**)
 	capture.set(CAP_PROP_FRAME_HEIGHT, (capture.get(CAP_PROP_FRAME_HEIGHT) / 2) <= 720 ? 720 : capture.get(CAP_PROP_FRAME_HEIGHT) / 2);
 	CAFFERect = Rect((capture.get(CAP_PROP_FRAME_WIDTH) / 2.0) - 250, (capture.get(CAP_PROP_FRAME_HEIGHT) / 2.0) - 250, 300, 300);
 	long fc = 6;
-
+	//VisualREPL vrepl2("Camera Two", ClipsAdapter(clips_vca_rules), faceAnnotator, true);
+	//vrepl2.startAt(1,10);
 	while (true)
 	{
 
@@ -173,16 +176,14 @@ int main(int, char**)
 		tbb::parallel_invoke(
 			[&]
 		{
-			clips.callFactCreateFN(allAnnotations);
+			clips.callFactCreateFN(allAnnotations, "Camera One");
 
 			if (objectContours.size() > 0)
 			{
 				for (auto& c : objectContours)
 				{
-					clips.callFactCreateFN(Annotation(boundingRect(Mat(c)), "contour", "contour"));
+					clips.callFactCreateFN(Annotation(boundingRect(Mat(c)), "contour", "contour"),"Camera One");
 				}
-
-				
 			}
 		},
 
@@ -199,9 +200,9 @@ int main(int, char**)
 			drawContours(frame, objectContours, -1, CV_RGB(255, 213, 21), 2);
 		}
 		);
-		
 
-		
+
+
 		clips.envRun();
 		clips.envEval("(facts)", rv);
 		imshow(window_name, frame);
@@ -212,7 +213,7 @@ int main(int, char**)
 			break;
 		}
 	}
-	
+
 
 	return EXIT_SUCCESS;
 }
