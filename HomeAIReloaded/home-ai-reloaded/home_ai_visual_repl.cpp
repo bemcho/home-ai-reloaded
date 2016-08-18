@@ -25,7 +25,7 @@ using namespace std;
 using namespace hai;
 
 String face_cascade_name = "cascade_frontalface.xml";
-String window_name = "Capture - Face detection";
+String window_name = "Home AI";
 VideoCapture capture;
 String lbp_recognizer_name = "lbphFaceRecognizer.xml";
 String clips_vca_rules = "visualcontextrules.clp";
@@ -33,20 +33,7 @@ String clips_vca_rules = "visualcontextrules.clp";
 
 ClipsAdapter clips(clips_vca_rules);
 
-Rect_<int> CAFFERect;
-Mat frame, frame_gray;
-bool drawFaceDetectsToWindow = true;
-bool drawEdgeDetectsToWindow = false;
-bool detectAndDisplayWithCAFFEConf = true;
-stringstream caffe_fmt;
-vector<Annotation> lbpAnnotations;
-vector<Annotation> textAnnotations;
-vector<Rect> textDetects;
-vector<Rect> objectsDetects;
-vector<vector<Point>> objectContours;
-vector<Vec4i> objectHierachies;
-vector<Rect> faceDetects;
-vector<Annotation> caffeAnnotations;
+vector<VisualREPL> cameras;
 VisualContextAnnotator faceAnnotator;
 VisualContextAnnotator textAnnotator;
 VisualContextAnnotator objectsAnnotator;
@@ -70,150 +57,32 @@ int main(int, char**)
 	objectsAnnotator.loadCAFFEModel(modelBin, modelTxt, "synset_words.txt");
 	objectsAnnotator.loadLBPModel(lbp_recognizer_name);
 
-	cv::namedWindow(window_name, WINDOW_OPENGL);
-	//tesseract init
-	//--1.5. Init Camera
-	for (int i = 0; i < 500; i++)
-	{
-		capture = VideoCapture(i);
-		if (!capture.isOpened())
-		{
-			capture.release();
-			cout << "--(!)Error opening video capture\nYou do have camera plugged in, right?" << endl;
-			if (i == 49)
-				return -1;
 
-			continue;
-		}
-		else
-		{
-			cout << "--(!)Camera found on " << i << " device index.";
-			break;
-		}
-	}
+	VisualREPL vrepl1("Camera 1", clips, [](Mat f, Mat f_g) {return faceAnnotator.predictWithLBP(f_g);}, true);
+	vrepl1.startAt(0, 10);
 
-	capture.set(CAP_PROP_FRAME_WIDTH, 10000);
-	capture.set(CAP_PROP_FRAME_HEIGHT, 10000);
+	VisualREPL vrepl2("Camera 2", clips, [](Mat f, Mat f_g) {return objectsAnnotator.predictWithCAFFE(f, f_g);}, true);
+	vrepl2.startAt(1,20);
 
-	capture.set(CAP_PROP_FRAME_WIDTH, (capture.get(CAP_PROP_FRAME_WIDTH) / 2) <= 1280 ? 1280 : capture.get(CAP_PROP_FRAME_WIDTH) / 2);
-	capture.set(CAP_PROP_FRAME_HEIGHT, (capture.get(CAP_PROP_FRAME_HEIGHT) / 2) <= 720 ? 720 : capture.get(CAP_PROP_FRAME_HEIGHT) / 2);
-	CAFFERect = Rect((capture.get(CAP_PROP_FRAME_WIDTH) / 2.0) - 250, (capture.get(CAP_PROP_FRAME_HEIGHT) / 2.0) - 250, 300, 300);
-	long fc = 6;
-	//VisualREPL vrepl2("Camera Two", ClipsAdapter(clips_vca_rules), faceAnnotator, true);
-	//vrepl2.startAt(1,10);
+	VisualREPL vrepl3("Camera 3", clips, [](Mat f, Mat f_g) {return textAnnotator.predictWithTESSERACT(f_g);}, true);
+	vrepl3.startAt(2, 10);
+
 	while (true)
 	{
-
-		capture >> frame;
-
-		cvtColor(frame, frame_gray, COLOR_BGR2GRAY);
-		equalizeHist(frame_gray, frame_gray);
-		if (frame.empty())
-		{
-			cout << " --(!) No captured frame -- Break!" << endl;
-			break;
-		}
-
-
-		tbb::parallel_invoke(
-			[]
-		{
-			vector<Annotation> localAnnotations;
-			faceDetects.clear();
-			faceAnnotator.predictWithLBP(localAnnotations, frame_gray);
-			lbpAnnotations.clear();
-			lbpAnnotations = localAnnotations;
-		},
-
-			[]
-		{
-			vector<Annotation> localAnnotations;
-			textAnnotator.predictWithTESSERACT(localAnnotations, frame_gray);
-			textAnnotations.clear();
-			textAnnotations = localAnnotations;
-		}
-		);
-
-
-		{
-			vector<vector<Point>> localContours;
-			vector<Rect> localDetects;
-
-
-			objectsAnnotator.detectObjectsWithCanny(localContours, frame_gray, lowThreshold, Size(50, 50));
-			objectContours.clear();
-			objectContours = localContours;
-
-			for (auto& cnt : localContours)
-			{
-				localDetects.push_back(boundingRect(cnt));
-			}
-			objectsDetects.clear();
-			objectsDetects = localDetects;
-		}
-
-		/*if (fc % 30 == 0)
-		{
-			vector<Annotation> localAnnotations;
-			for (int i = 0;i < 3 && i < objectsDetects.size();i++)
-			{
-				localAnnotations.push_back(objectsAnnotator.predictWithCAFFEInRectangle(objectsDetects[i], frame));
-			}
-
-			caffeAnnotations.clear();
-			caffeAnnotations = localAnnotations;
-		}*/
-
-		vector<Annotation> allAnnotations;
-		allAnnotations = lbpAnnotations;
-		allAnnotations.insert(allAnnotations.end(), textAnnotations.begin(), textAnnotations.end());
-		allAnnotations.insert(allAnnotations.end(), caffeAnnotations.begin(), caffeAnnotations.end());
-
 		clips.envReset();
+		this_thread::sleep_for(std::chrono::milliseconds(50));
 		DATA_OBJECT rv;
-		//define new facts here
-		stringstream  fact;
-		tbb::parallel_invoke(
-			[&]
-		{
-			clips.callFactCreateFN(allAnnotations, "Camera One");
-
-			if (objectContours.size() > 0)
-			{
-				for (auto& c : objectContours)
-				{
-					clips.callFactCreateFN(Annotation(boundingRect(Mat(c)), "contour", "contour"),"Camera One");
-				}
-			}
-		},
-
-			[&]
-		{
-			for (auto& annot : allAnnotations)
-			{
-				rectangle(frame, annot.getRectangle(), CV_RGB(0, 255, 0), 1);
-				putText(frame, annot.getDescription(), Point(annot.getRectangle().x, annot.getRectangle().y - 20), CV_FONT_NORMAL, 1.0, CV_RGB(0, 255, 0), 1);
-			}
-		},
-			[]
-		{
-			drawContours(frame, objectContours, -1, CV_RGB(255, 213, 21), 2);
-		}
-		);
-
-
-
 		clips.envRun();
 		clips.envEval("(facts)", rv);
-		imshow(window_name, frame);
-		fc++;
+		this_thread::sleep_for(std::chrono::milliseconds(50));
+
 		//-- bail out if escape was pressed
 		if (waitKey(1) == 27)
 		{
 			break;
 		}
 	}
-
+	std::terminate();
 
 	return EXIT_SUCCESS;
 }

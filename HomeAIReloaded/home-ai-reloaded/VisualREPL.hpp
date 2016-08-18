@@ -4,25 +4,43 @@
 #include "VisualContextAnnotator.hpp"
 #include  <thread>
 #include  "tbb/parallel_invoke.h"
+#include "tbb/critical_section.h"
+#include <functional>
 using namespace std;
 namespace hai
 {
 	class VisualREPL
 	{
 	public:
-		VisualREPL(string replName, ClipsAdapter & aClips, VisualContextAnnotator& aAnnotators, bool aShowWindow) : name{ replName }, clips{ aClips }, annotators{ aAnnotators }, showWindow{ showWindow } {};
+		VisualREPL(string replName, ClipsAdapter & aClips, function<vector<Annotation>(cv::Mat, cv::Mat)> annotationFN, bool aShowWindow) : name{ replName }, annotationFN{ annotationFN }, clips{ aClips }, showWindow{ showWindow } {};
 		~VisualREPL() { capture.release(); };
 
 		void startAt(int cameraIndex, int framesPerSecond) noexcept
 		{
 			capture = VideoCapture(cameraIndex);
-			std::thread t(&VisualREPL::startVisualLoop, this, framesPerSecond);
+			if (!capture.isOpened())
+			{
+				capture.release();
+				cout << "--(!)Error opening video capture\nYou do have camera plugged in, right?" << endl;
+				return;
+			}
+
+			t = std::thread(&VisualREPL::startVisualLoop, this, framesPerSecond);
+			t.detach();
 		}
 
 		void startAt(const string& streamOrWebCamUrl, int framesPerSecond) noexcept
 		{
 			capture = VideoCapture(streamOrWebCamUrl);
-			std::thread t(&VisualREPL::startVisualLoop, this, framesPerSecond);
+			if (!capture.isOpened())
+			{
+				capture.release();
+				cout << "--(!)Error opening video capture\nYou do have camera plugged in, right?" << endl;
+				return;
+			}
+
+			t = std::thread(&VisualREPL::startVisualLoop, this, framesPerSecond);
+			t.detach();
 		}
 
 	private:
@@ -31,17 +49,12 @@ namespace hai
 		bool showWindow;
 		string name;
 		ClipsAdapter& clips;
-		VisualContextAnnotator& annotators;
+		function<vector<Annotation>(cv::Mat, cv::Mat)> annotationFN;
 
 		void startVisualLoop(int framesPerSecond) noexcept
 		{
-			long fc = 6;
-			if (!capture.isOpened())
-			{
-				capture.release();
-				cout << "--(!)Error opening video capture\nYou do have camera plugged in, right?" << endl;
-				return;
-			}
+			long fc = 1;
+
 			capture.set(CAP_PROP_FRAME_WIDTH, 10000);
 			capture.set(CAP_PROP_FRAME_HEIGHT, 10000);
 
@@ -54,10 +67,13 @@ namespace hai
 
 			Mat frame, frame_gray;
 			vector<Annotation> annotations;
+			capture >> frame;
 			while (true)
 			{
 				if (fc++ % framesPerSecond == 0)
 				{
+					
+					annotations.clear();
 					capture >> frame;
 
 					cvtColor(frame, frame_gray, COLOR_BGR2GRAY);
@@ -68,29 +84,28 @@ namespace hai
 						break;
 					}
 
-					//annotators anotate
-					tbb::parallel_invoke(
-						[&]
-					{
-						//send facts to clips
-						clips.callFactCreateFN(annotations, name);
-					},
+					annotations = annotationFN(frame, frame_gray);
+					clips.callFactCreateFN(annotations, name);
+				}
 
-						[&]
+				if (showWindow)
+				{
+					for (auto& annot : annotations)
 					{
-						if (showWindow)
-						{
-							for (auto& annot : annotations)
-							{
-								rectangle(frame, annot.getRectangle(), CV_RGB(0, 255, 0), 1);
-								putText(frame, annot.getDescription(), Point(annot.getRectangle().x, annot.getRectangle().y - 20), CV_FONT_NORMAL, 1.0, CV_RGB(0, 255, 0), 1);
-							}
-							imshow(name, frame);
-						}
+						rectangle(frame, annot.getRectangle(), CV_RGB(0, 255, 0), 1);
+						putText(frame, annot.getDescription(), Point(annot.getRectangle().x, annot.getRectangle().y - 20), CV_FONT_NORMAL, 1.0, CV_RGB(0, 255, 0), 1);
 					}
-					);
+					imshow(name, frame);
+				}
+				
+				if (waitKey(1) == 27)
+				{
+
+					break;
 				}
 			}
+			capture.release();
+			cv::destroyWindow(name);
 		}
 	};
 }

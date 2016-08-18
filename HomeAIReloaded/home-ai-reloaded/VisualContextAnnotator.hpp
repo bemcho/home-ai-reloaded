@@ -16,7 +16,7 @@
 #include "tesseract/baseapi.h"
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_for.h"
-#include "tbb/critical_section.h"
+#include "tbb/mutex.h"
 using namespace  std;
 using namespace cv;
 namespace hai
@@ -31,28 +31,29 @@ namespace hai
 		void loadCAFFEModel(const string modelBinPath, const string modelProtoTextPath, const string synthWordPath);
 		void loadTESSERACTModel(const string& dataPath, const string& lang, tesseract::OcrEngineMode mode = tesseract::OEM_DEFAULT);
 
-		void detectWithCascadeClassifier(vector<Rect>& result,const Mat& frame_gray, Size minSize = Size(80, 80)) noexcept;
-		void detectWithMorphologicalGradient(vector<Rect>& result, const Mat& frame, Size minSize = Size(8, 8), Size kernelSize = Size(9, 1)) noexcept;
-		void detectObjectsWithCanny(vector<Rect>& result, const Mat& frame_gray, double lowThreshold = 77, Size minSize = Size(80, 80)) noexcept;
-		void detectObjectsWithCanny(vector<vector<Point>>& result, const Mat& frame_gray, double lowThreshold = 77, Size minSize = Size(80, 80)) noexcept;
+		vector<Rect>  detectWithCascadeClassifier(const Mat frame_gray, Size minSize = Size(80, 80)) noexcept;
+		vector<Rect>  detectWithMorphologicalGradient(const Mat frame, Size minSize = Size(8, 8), Size kernelSize = Size(9, 1)) noexcept;
+		vector<Rect>  detectObjectsWithCanny(const Mat frame_gray, double lowThreshold = 77, Size minSize = Size(80, 80)) noexcept;
+		vector<vector<Point>>  detectContoursWithCanny(const Mat frame_gray, double lowThreshold = 77, Size minSize = Size(80, 80)) noexcept;
 
-		void predictWithLBP(vector<Annotation>& annotations, const Mat & frame_gray) noexcept;
-		void predictWithLBP(vector<Annotation>& annotations, const vector<Rect> detects, const Mat & frame_gray) noexcept;
-		Annotation predictWithLBPInRectangle(const Rect & detect, const Mat & frame_gray) noexcept;
+		vector<Annotation> predictWithLBP(const Mat  frame_gray) noexcept;
+		vector<Annotation> predictWithLBP(const vector<Rect> detects, const Mat  frame_gray) noexcept;
+		Annotation predictWithLBPInRectangle(const Rect  detect, const Mat  frame_gray) noexcept;
 
-		void predictWithCAFFE(vector<Annotation>& annotations, const Mat & frame, const Mat & frame_gray) noexcept;
-		void predictWithCAFFE(vector<Annotation>& annotations, const vector<Rect> detects, const Mat & frame) noexcept;
-		Annotation predictWithCAFFEInRectangle(const Rect & detect, const Mat & frame)noexcept;
+		vector<Annotation> predictWithCAFFE(const Mat frame, const Mat frame_gray) noexcept;
+		vector<Annotation> predictWithCAFFE(const vector<Rect> detects, const Mat frame) noexcept;
+		Annotation predictWithCAFFEInRectangle(const Rect detect, const Mat frame)noexcept;
 
-		void predictWithTESSERACT(vector<Annotation>& annotations, const cv::Mat & frame_gray) noexcept;
-		void predictWithTESSERACT(vector<Annotation>& annotations, const vector<Rect> detects, const cv::Mat & frame_gray) noexcept;
-		Annotation predictWithTESSERACTInRectangle(const Rect & detect, const Mat & frame_gray) noexcept;
+		vector<Annotation> predictWithTESSERACT(const cv::Mat frame_gray) noexcept;
+		vector<Annotation> predictWithTESSERACT(const vector<Rect> detects, const cv::Mat frame_gray) noexcept;
+		Annotation predictWithTESSERACTInRectangle(const Rect detect, const Mat frame_gray) noexcept;
 
 	private:
 		Ptr<face::FaceRecognizer> model;
 		unique_ptr<CascadeClassifier> cascade_classifier;
 		unique_ptr<tesseract::TessBaseAPI> tess;
 		unique_ptr<dnn::Net> net;
+		tbb::mutex m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10;
 
 		double maxDistance;
 		void getMaxClass(dnn::Blob & probBlob, int & classId, double & classProb);

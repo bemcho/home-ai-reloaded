@@ -5,6 +5,7 @@
 #include <memory>
 #include "Annotation.hpp"
 #include "clips/clips.h"
+#include "tbb/mutex.h"
 using namespace std;
 namespace hai
 {
@@ -19,20 +20,22 @@ namespace hai
 		};
 		~ClipsAdapter() { DestroyEnvironment(theCLIPSEnv); };
 
-		inline void callFactCreateFN(Annotation& annotation, const string& visualRepl) noexcept { addDetectFact2(theCLIPSEnv, annotation, visualRepl); };
+		inline void callFactCreateFN(Annotation& annotation, const string& visualRepl) noexcept { tbb::mutex::scoped_lock(m0); addDetectFact2(theCLIPSEnv, annotation, visualRepl);};
 		inline void callFactCreateFN(vector<Annotation>& annotations, const string& visualRepl) noexcept
 		{
+			tbb::mutex::scoped_lock(m0);
 			for (auto& a : annotations)
 			{
 				callFactCreateFN(a, visualRepl);
 			}
 		};
 
-		inline	void envReset() noexcept { EnvReset(theCLIPSEnv); };
-		inline	void envRun() noexcept { EnvRun(theCLIPSEnv, -1); };
-		inline	void envEval(string clipsCommand, DATA_OBJECT& result) noexcept { EnvEval(theCLIPSEnv, clipsCommand.c_str(), &result); };
+		inline	void envReset() noexcept { tbb::mutex::scoped_lock(m0); EnvReset(theCLIPSEnv); };
+		inline	void envRun() noexcept { tbb::mutex::scoped_lock(m0); EnvRun(theCLIPSEnv, -1); };
+		inline	void envEval(string clipsCommand, DATA_OBJECT& result) noexcept { tbb::mutex::scoped_lock(m0); EnvEval(theCLIPSEnv, clipsCommand.c_str(), &result); };
 
 	private:
+		tbb::mutex m0;
 		cv::Ptr<void> theCLIPSEnv;
 		string rulesFilePath;
 
