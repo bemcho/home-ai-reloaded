@@ -14,6 +14,7 @@ namespace hai
 	public:
 		ClipsAdapter(const string aRulesFilePath) : rulesFilePath{ aRulesFilePath }
 		{
+			DATA_OBJECT rv;
 			theCLIPSEnv = CreateEnvironment();
 			EnvBuild(theCLIPSEnv, defaultDeftemplateFN().c_str());
 			EnvLoad(theCLIPSEnv, aRulesFilePath.c_str());
@@ -21,13 +22,13 @@ namespace hai
 		};
 		~ClipsAdapter() { DestroyEnvironment(theCLIPSEnv); };
 
-		inline void callFactCreateFN(Annotation& annotation, const string& visualRepl) noexcept { tbb::mutex::scoped_lock(m0); addDetectFact2(theCLIPSEnv, annotation, visualRepl);};
+		inline void callFactCreateFN(Annotation& annotation, const string& visualRepl) noexcept { tbb::mutex::scoped_lock(m0); addDetectFact2(theCLIPSEnv, annotation, visualRepl); };
 		inline void callFactCreateFN(vector<Annotation>& annotations, const string& visualRepl) noexcept
 		{
 			tbb::mutex::scoped_lock(m0);
-			for (auto& const a : annotations)
+			for (auto& a : annotations)
 			{
-				callFactCreateFN(a, visualRepl);
+				addDetectFact2(theCLIPSEnv, a, visualRepl);
 			}
 		};
 
@@ -53,6 +54,7 @@ namespace hai
 
 		void addDetectFact2(void *environment, Annotation& a, const string& visualRepl) noexcept
 		{
+			tbb::mutex::scoped_lock(m0);
 			void *newFact;
 			void *templatePtr;
 			void *theMultifield;
@@ -82,7 +84,16 @@ namespace hai
 			/*==============================*/
 			/* Set the value of the z slot. */
 			/*==============================*/
-			cv::Rect at = a.getRectangle();
+			cv::Rect at;
+			if (a.getType().compare("contour") == 0)
+			{
+				at = boundingRect(a.getContour());
+			}
+			else
+			{
+				at = a.getRectangle();
+			}
+
 			theMultifield = EnvCreateMultifield(environment, 4);
 			SetMFType(theMultifield, 1, INTEGER);
 			SetMFValue(theMultifield, 1, EnvAddLong(environment, at.x));

@@ -96,11 +96,24 @@ namespace hai
 
 				if (showWindow)
 				{
+					vector<vector<Point>> contours;
 					for (auto& annot : annotations)
 					{
-						rectangle(frame, annot.getRectangle(), CV_RGB(0, 255, 0), 1);
-						putText(frame, annot.getDescription(), Point(annot.getRectangle().x, annot.getRectangle().y - 20), CV_FONT_NORMAL, 1.0, CV_RGB(0, 255, 0), 1);
+						if (annot.getType().compare("contour") == 0)
+						{
+							contours.push_back(annot.getContour());
+						}
+						else
+						{
+							putText(frame, annot.getDescription(), Point(annot.getRectangle().x, annot.getRectangle().y - 20), CV_FONT_NORMAL, 1.0, CV_RGB(0, 255, 0), 1);
+							rectangle(frame, annot.getRectangle(), CV_RGB(0, 255, 0), 1);
+						}
 					}
+					if (contours.size() > 0)
+					{
+						drawContours(frame, contours, -1, CV_RGB(255, 213, 21), 2);
+					}
+					
 					cs.lock();
 					imshow(name, frame);
 					if (waitKey(1) == 27)

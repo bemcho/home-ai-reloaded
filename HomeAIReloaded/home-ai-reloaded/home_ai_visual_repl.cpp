@@ -40,6 +40,37 @@ int lowThreshold = 77;
 const int MAX_CAMERAS = 5;
 const bool WINDOW_SHOW = true;
 
+vector<Annotation> annotateFaceTextContoursFN(Mat f, Mat f_g)
+{
+	vector<Annotation> result;
+	vector<Annotation> face;
+	vector<Annotation> text;
+	vector<Annotation> contours;
+
+	tbb::parallel_invoke(
+		[&]
+	()
+	{
+		text =  textAnnotator.predictWithTESSERACT(f_g);
+	},
+		[&]
+	()
+	{
+		face =  faceAnnotator.predictWithLBP(f_g) ;
+	},
+		[&]
+	()
+	{
+		contours = faceAnnotator.detectContoursWithCanny(f_g);
+	}
+	);
+	result.insert(result.end(), text.begin(), text.end());
+	result.insert(result.end(), face.begin(), face.end());
+	result.insert(result.end(), contours.begin(), contours.end());
+
+	return result;
+}
+
 /**
 * @function main
 */
@@ -59,9 +90,8 @@ int main(int, char**)
 
 	for (int i = 0; i < MAX_CAMERAS; i++)
 	{
-		cout << "--(!)Camera found on " << i << " device index.";
-		shared_ptr<VisualREPL> vreplP = make_shared<VisualREPL>(VisualREPL("Stream " + std::to_string(i), clips, [](Mat f, Mat f_g)
-		{ vector<Annotation> all{ faceAnnotator.predictWithLBP(f_g) }; vector<Annotation> text{ textAnnotator.predictWithTESSERACT(f_g) }; all.insert(all.end(), text.begin(), text.end()); return all;}, WINDOW_SHOW));
+		cout << "--(!)Camera found on " << i << " device index." << endl;
+		shared_ptr<VisualREPL> vreplP = make_shared<VisualREPL>(VisualREPL("Stream " + std::to_string(i), clips, annotateFaceTextContoursFN, WINDOW_SHOW));
 		if (vreplP->startAt(i, 10))
 		{
 			cameras.push_back(vreplP);
@@ -79,12 +109,12 @@ int main(int, char**)
 		clips.envEval("(facts)", rv);
 		clips.envRun();
 		this_thread::sleep_for(std::chrono::milliseconds(50));
-		clips.envReset();
 		//-- bail out if escape was pressed
 		if (waitKey(1) == 27)
 		{
 			break;
 		}
+		
 	}
 	std::terminate();
 

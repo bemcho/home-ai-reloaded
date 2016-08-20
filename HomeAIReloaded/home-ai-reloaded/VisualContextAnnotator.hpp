@@ -34,7 +34,7 @@ namespace hai
 		vector<Rect>  detectWithCascadeClassifier(const Mat frame_gray, Size minSize = Size(80, 80)) noexcept;
 		vector<Rect>  detectWithMorphologicalGradient(const Mat frame, Size minSize = Size(8, 8), Size kernelSize = Size(9, 1)) noexcept;
 		vector<Rect>  detectObjectsWithCanny(const Mat frame_gray, double lowThreshold = 77, Size minSize = Size(80, 80)) noexcept;
-		vector<vector<Point>>  detectContoursWithCanny(const Mat frame_gray, double lowThreshold = 77, Size minSize = Size(80, 80)) noexcept;
+		vector<Annotation>  detectContoursWithCanny(const Mat frame_gray, double lowThreshold = 77, Size minSize = Size(80, 80)) noexcept;
 
 		vector<Annotation> predictWithLBP(const Mat  frame_gray) noexcept;
 		vector<Annotation> predictWithLBP(const vector<Rect> detects, const Mat  frame_gray) noexcept;

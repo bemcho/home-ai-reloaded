@@ -123,10 +123,10 @@ namespace hai
 		}
 		return result;
 	}
-	vector<vector<Point>> VisualContextAnnotator::detectContoursWithCanny(const Mat frame_gray, double lowThreshold, Size minSize) noexcept
+	vector<Annotation> VisualContextAnnotator::detectContoursWithCanny(const Mat frame_gray, double lowThreshold, Size minSize) noexcept
 	{
 		tbb::mutex::scoped_lock lck(m9);
-		vector<vector<Point>> result;
+		vector<Annotation> result;
 		Mat detected_edges;
 		/// Reduce noise with a kernel 3x3
 		//blur(frame_gray, detected_edges, Size(3, 3));
@@ -143,7 +143,7 @@ namespace hai
 		vector<Vec4i> hierarchy;
 		findContours(connected, localContours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 
-		for (auto cnt : localContours)
+		for (auto& cnt : localContours)
 		{
 			double epsilon = 0.01*arcLength(cnt, true);
 			vector<Point> approx;
@@ -153,10 +153,9 @@ namespace hai
 				Rect r = boundingRect(approx);
 				if (r.size().width >= minSize.width && r.size().height >= minSize.height)
 				{
-					result.push_back(cnt);
+					result.push_back(Annotation(cnt,"contour of " + std::to_string(cnt.size()) +" points.","contour"));
 				}
 			}
-
 		}
 		return result;
 	}
@@ -166,13 +165,35 @@ namespace hai
 		tbb::mutex::scoped_lock lck(m10);
 		vector<Rect> result;
 
-		vector<Vec4i> hierarchy;
-		vector<vector<Point>> contours = detectContoursWithCanny(frame_gray, lowThreshold, minSize);
+		Mat detected_edges;
+		/// Reduce noise with a kernel 3x3
+		//blur(frame_gray, detected_edges, Size(3, 3));
+		GaussianBlur(frame_gray, detected_edges, Size(3, 3), 1);
 
-		for (auto cnt : contours)
+
+		/// Canny detector
+		Canny(detected_edges, detected_edges, lowThreshold, lowThreshold * 3, 3);
+		Mat connected;
+		Mat morphKernel = getStructuringElement(MORPH_RECT, Size(3, 3));
+		morphologyEx(detected_edges, connected, MORPH_CLOSE, morphKernel);
+		// connect horizontally oriented regions
+		vector<vector<Point>> localContours;
+		vector<Vec4i> hierarchy;
+		findContours(connected, localContours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+		for (auto& cnt : localContours)
 		{
-			Rect r = boundingRect(cnt);
-			result.push_back(r);
+			double epsilon = 0.01*arcLength(cnt, true);
+			vector<Point> approx;
+			approxPolyDP(cnt, approx, epsilon, true); //only closed curves
+			if (approx.size() > 0)
+			{
+				Rect r = boundingRect(approx);
+				if (r.size().width >= minSize.width && r.size().height >= minSize.height)
+				{
+					result.push_back(r);
+				}
+			}
 		}
 		return result;
 	}
