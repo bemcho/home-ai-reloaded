@@ -53,7 +53,7 @@ namespace hai
 		unique_ptr<CascadeClassifier> cascade_classifier;
 		unique_ptr<tesseract::TessBaseAPI> tess;
 		unique_ptr<dnn::Net> net;
-		tbb::mutex m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10;
+		tbb::mutex m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, lbpInRect, tessInRect, caffeInRect;
 
 		double maxDistance;
 		void getMaxClass(dnn::Blob & probBlob, int & classId, double & classProb);

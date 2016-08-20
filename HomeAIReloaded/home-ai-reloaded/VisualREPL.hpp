@@ -12,21 +12,26 @@ namespace hai
 	class VisualREPL
 	{
 	public:
-		VisualREPL(string replName, ClipsAdapter & aClips, function<vector<Annotation>(cv::Mat, cv::Mat)> annotationFN, bool aShowWindow) : name{ replName }, annotationFN{ annotationFN }, clips{ aClips }, showWindow{ showWindow } {};
+		VisualREPL(string replName, ClipsAdapter & aClips, function<vector<Annotation>(cv::Mat, cv::Mat)> annotationFN, bool aShowWindow) : name{ replName }, annotationFN{ annotationFN }, clips{ aClips }, showWindow{ aShowWindow } {};
 		~VisualREPL() { capture.release(); };
+		VisualREPL(const VisualREPL& v) 
+			: name{ v.name }, annotationFN{ v.annotationFN }, clips{ v.clips }, showWindow{ v.showWindow } 
+		{
+		};
 
-		void startAt(int cameraIndex, int framesPerSecond) noexcept
+		bool startAt(int cameraIndex, int framesPerSecond) noexcept
 		{
 			capture = VideoCapture(cameraIndex);
 			if (!capture.isOpened())
 			{
 				capture.release();
 				cout << "--(!)Error opening video capture\nYou do have camera plugged in, right?" << endl;
-				return;
+				return false;
 			}
 
 			t = std::thread(&VisualREPL::startVisualLoop, this, framesPerSecond);
 			t.detach();
+			return true;
 		}
 
 		void startAt(const string& streamOrWebCamUrl, int framesPerSecond) noexcept
@@ -44,6 +49,7 @@ namespace hai
 		}
 
 	private:
+		tbb::critical_section cs;
 		std::thread t;
 		VideoCapture capture;
 		bool showWindow;
@@ -62,7 +68,7 @@ namespace hai
 			capture.set(CAP_PROP_FRAME_HEIGHT, (capture.get(CAP_PROP_FRAME_HEIGHT) / 2) <= 720 ? 720 : capture.get(CAP_PROP_FRAME_HEIGHT) / 2);
 			if (showWindow)
 			{
-				cv::namedWindow(name, WINDOW_OPENGL);
+				cv::namedWindow(name, WINDOW_AUTOSIZE);
 			}
 
 			Mat frame, frame_gray;
@@ -95,14 +101,16 @@ namespace hai
 						rectangle(frame, annot.getRectangle(), CV_RGB(0, 255, 0), 1);
 						putText(frame, annot.getDescription(), Point(annot.getRectangle().x, annot.getRectangle().y - 20), CV_FONT_NORMAL, 1.0, CV_RGB(0, 255, 0), 1);
 					}
+					cs.lock();
 					imshow(name, frame);
+					if (waitKey(1) == 27)
+					{
+						cs.unlock();
+						break;
+					}
+					cs.unlock();
 				}
 				
-				if (waitKey(1) == 27)
-				{
-
-					break;
-				}
 			}
 			capture.release();
 			cv::destroyWindow(name);

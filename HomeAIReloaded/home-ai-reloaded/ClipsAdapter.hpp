@@ -17,6 +17,7 @@ namespace hai
 			theCLIPSEnv = CreateEnvironment();
 			EnvBuild(theCLIPSEnv, defaultDeftemplateFN().c_str());
 			EnvLoad(theCLIPSEnv, aRulesFilePath.c_str());
+			EnvReset(theCLIPSEnv);
 		};
 		~ClipsAdapter() { DestroyEnvironment(theCLIPSEnv); };
 
@@ -24,7 +25,7 @@ namespace hai
 		inline void callFactCreateFN(vector<Annotation>& annotations, const string& visualRepl) noexcept
 		{
 			tbb::mutex::scoped_lock(m0);
-			for (auto& a : annotations)
+			for (auto& const a : annotations)
 			{
 				callFactCreateFN(a, visualRepl);
 			}
@@ -33,6 +34,7 @@ namespace hai
 		inline	void envReset() noexcept { tbb::mutex::scoped_lock(m0); EnvReset(theCLIPSEnv); };
 		inline	void envRun() noexcept { tbb::mutex::scoped_lock(m0); EnvRun(theCLIPSEnv, -1); };
 		inline	void envEval(string clipsCommand, DATA_OBJECT& result) noexcept { tbb::mutex::scoped_lock(m0); EnvEval(theCLIPSEnv, clipsCommand.c_str(), &result); };
+		inline	void envClear() noexcept { tbb::mutex::scoped_lock(m0); EnvClear(theCLIPSEnv); };
 
 	private:
 		tbb::mutex m0;

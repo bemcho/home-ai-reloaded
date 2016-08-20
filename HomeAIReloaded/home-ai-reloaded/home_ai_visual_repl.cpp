@@ -26,19 +26,19 @@ using namespace hai;
 
 String face_cascade_name = "cascade_frontalface.xml";
 String window_name = "Home AI";
-VideoCapture capture;
 String lbp_recognizer_name = "lbphFaceRecognizer.xml";
 String clips_vca_rules = "visualcontextrules.clp";
 
 
 ClipsAdapter clips(clips_vca_rules);
 
-vector<VisualREPL> cameras;
+vector<shared_ptr<VisualREPL>> cameras;
 VisualContextAnnotator faceAnnotator;
 VisualContextAnnotator textAnnotator;
 VisualContextAnnotator objectsAnnotator;
 int lowThreshold = 77;
-
+const int MAX_CAMERAS = 5;
+const bool WINDOW_SHOW = true;
 
 /**
 * @function main
@@ -57,25 +57,29 @@ int main(int, char**)
 	objectsAnnotator.loadCAFFEModel(modelBin, modelTxt, "synset_words.txt");
 	objectsAnnotator.loadLBPModel(lbp_recognizer_name);
 
-
-	VisualREPL vrepl1("Camera 1", clips, [](Mat f, Mat f_g) {return faceAnnotator.predictWithLBP(f_g);}, true);
-	vrepl1.startAt(0, 10);
-
-	VisualREPL vrepl2("Camera 2", clips, [](Mat f, Mat f_g) {return objectsAnnotator.predictWithCAFFE(f, f_g);}, true);
-	vrepl2.startAt(1,20);
-
-	VisualREPL vrepl3("Camera 3", clips, [](Mat f, Mat f_g) {return textAnnotator.predictWithTESSERACT(f_g);}, true);
-	vrepl3.startAt(2, 10);
+	for (int i = 0; i < MAX_CAMERAS; i++)
+	{
+		cout << "--(!)Camera found on " << i << " device index.";
+		shared_ptr<VisualREPL> vreplP = make_shared<VisualREPL>(VisualREPL("Stream " + std::to_string(i), clips, [](Mat f, Mat f_g)
+		{ vector<Annotation> all{ faceAnnotator.predictWithLBP(f_g) }; vector<Annotation> text{ textAnnotator.predictWithTESSERACT(f_g) }; all.insert(all.end(), text.begin(), text.end()); return all;}, WINDOW_SHOW));
+		if (vreplP->startAt(i, 10))
+		{
+			cameras.push_back(vreplP);
+		}
+		else
+		{
+			vreplP.reset();
+		}
+	}
 
 	while (true)
 	{
-		clips.envReset();
-		this_thread::sleep_for(std::chrono::milliseconds(50));
 		DATA_OBJECT rv;
-		clips.envRun();
+		this_thread::sleep_for(std::chrono::milliseconds(100));
 		clips.envEval("(facts)", rv);
+		clips.envRun();
 		this_thread::sleep_for(std::chrono::milliseconds(50));
-
+		clips.envReset();
 		//-- bail out if escape was pressed
 		if (waitKey(1) == 27)
 		{

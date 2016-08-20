@@ -14,10 +14,10 @@ namespace hai
 
 	VisualContextAnnotator::~VisualContextAnnotator()
 	{
-		/*cascade_classifier.release();
+		cascade_classifier.release();
 		model.release();
 		net.release();
-		tess.release();*/
+		tess.release();
 	}
 
 	void VisualContextAnnotator::loadCascadeClassifier(const string cascadeClassifierPath)
@@ -179,6 +179,7 @@ namespace hai
 
 	Annotation VisualContextAnnotator::predictWithLBPInRectangle(const Rect detect, const  Mat frame_gray) noexcept
 	{
+		tbb::mutex::scoped_lock lck(lbpInRect);
 		Mat face = frame_gray(detect);
 		int predictedLabel = -1;
 		double confidence = 0.0;
@@ -258,13 +259,11 @@ namespace hai
 
 	Annotation VisualContextAnnotator::predictWithCAFFEInRectangle(const Rect detect, const  Mat frame) noexcept
 	{
+		tbb::mutex::scoped_lock lck(caffeInRect);
+
 		cv::Mat img;
 		img = Scalar::all(0);
-
 		resize(frame(detect), img, Size(244, 244));
-
-		tbb::mutex::scoped_lock lck(m7);
-
 		
 		dnn::Blob inputBlob;
 		dnn::Blob prob;
@@ -356,14 +355,14 @@ namespace hai
 			if (name.length())
 				classNames.push_back(name.substr(name.find(' ') + 1));
 		}
-		fp.close();
+		fp.close(); 
 		return classNames;
 	}
 
 
 	Annotation VisualContextAnnotator::predictWithTESSERACTInRectangle(const Rect  detect, const Mat frame_gray) noexcept
 	{
-		tbb::mutex::scoped_lock lck(m3);
+		tbb::mutex::scoped_lock lck(tessInRect);
 		Mat sub = frame_gray(detect).clone();
 		tess->SetImage((uchar*)sub.data, sub.size().width, sub.size().height, sub.channels(), sub.step1());
 		int result = tess->Recognize(0);
