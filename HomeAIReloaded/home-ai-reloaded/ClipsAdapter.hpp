@@ -6,6 +6,7 @@
 #include "Annotation.hpp"
 #include "clips/clips.h"
 #include "tbb/mutex.h"
+#include <chrono>
 using namespace std;
 namespace hai
 {
@@ -49,6 +50,7 @@ namespace hai
 				" (multislot rectangle)"
 				" (slot ontology)"
 				" (slot at)"
+				" (slot timestamp)"
 				" )";
 		}
 
@@ -76,13 +78,13 @@ namespace hai
 			newFact = EnvCreateFact(environment, templatePtr);
 			if (newFact == NULL) return;
 			/*==============================*/
-			/* Set the value of the type slot. */
+			/* Set the value of the 'type' slot. */
 			/*==============================*/
 			theValue.type = SYMBOL;
 			theValue.value = EnvAddSymbol(environment, a.getType().c_str());
 			EnvPutFactSlot(environment, newFact, "type", &theValue);
 			/*==============================*/
-			/* Set the value of the z slot. */
+			/* Set the value of the 'rectangle' slot. */
 			/*==============================*/
 			cv::Rect at;
 			if (a.getType().compare("contour") == 0)
@@ -114,7 +116,7 @@ namespace hai
 			theValue.value = theMultifield;
 			EnvPutFactSlot(environment, newFact, "rectangle", &theValue);
 			/*==============================*/
-			/* Set the value of the what slot. */
+			/* Set the value of the what 'onthology' slot. */
 			/*==============================*/
 			theValue.type = SYMBOL;
 			stringstream onto;
@@ -122,13 +124,20 @@ namespace hai
 			theValue.value = EnvAddSymbol(environment, onto.str().c_str());
 			EnvPutFactSlot(environment, newFact, "ontology", &theValue);
 			/*==============================*/
-			/* Set the value of the what slot. */
+			/* Set the value of the what  'at' slot. */
 			/*==============================*/
 			theValue.type = SYMBOL;
 			stringstream repl;
 			repl << "\"" << visualRepl << "\"";
 			theValue.value = EnvAddSymbol(environment, repl.str().c_str());
 			EnvPutFactSlot(environment, newFact, "at", &theValue);
+			/*==============================*/
+			/* Set the value of the what 'timestamp' slot. */
+			/*==============================*/
+			theValue.type = INTEGER;
+			theValue.value = EnvAddLong(environment, std::chrono::duration_cast<std::chrono::nanoseconds>(
+				std::chrono::system_clock::now().time_since_epoch()).count());
+			EnvPutFactSlot(environment, newFact, "timestamp", &theValue);
 			/*=================================*/
 			/* Assign default values since all */
 			/* slots were not initialized. */

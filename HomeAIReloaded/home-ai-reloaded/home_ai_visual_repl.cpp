@@ -106,7 +106,7 @@ int main(int, char**)
 	{
 		DATA_OBJECT rv;
 		this_thread::sleep_for(std::chrono::milliseconds(100));
-		clips.envEval("(facts)", rv);
+		//clips.envEval("(facts)", rv);
 		clips.envRun();
 		this_thread::sleep_for(std::chrono::milliseconds(50));
 		//-- bail out if escape was pressed
