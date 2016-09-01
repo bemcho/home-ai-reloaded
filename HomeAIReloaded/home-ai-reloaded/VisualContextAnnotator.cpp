@@ -24,18 +24,36 @@ namespace hai
 	{
 		//-- 1. Load the cascade
 		if (!cascade_classifier->load(cascadeClassifierPath) || cascade_classifier->empty()) { printf("--(!)Error loading face cascade\n"); };
-
 	}
 
 	void VisualContextAnnotator::loadLBPModel(const string path, double maxDistance)
 	{
 		model->load(path);
 		this->maxDistance = maxDistance;
+		this->lbpModelPath = path;
 	}
 
 	void VisualContextAnnotator::loadTESSERACTModel(const string& dataPath, const string& lang, tesseract::OcrEngineMode mode)
 	{
 		tess->Init(dataPath.c_str(), lang.c_str(), tesseract::OEM_TESSERACT_CUBE_COMBINED);
+	}
+
+	void VisualContextAnnotator::train(vector<cv::Mat> samples, int label, string ontology) noexcept
+	{
+		tbb::mutex::scoped_lock(training);
+		vector<int> labels(samples.size(), label);
+		model->train(samples, labels);
+		model->setLabelInfo(label, ontology);
+	}
+
+	void VisualContextAnnotator::update(vector<cv::Mat> samples, int label, string ontology) noexcept
+	{
+		tbb::mutex::scoped_lock(lbpTrainingLock);
+		vector<int> labels(samples.size(), label);
+		model->update(samples, labels);
+		model->setLabelInfo(label, ontology);
+		model->save(lbpModelPath);
+		model->load(lbpModelPath);
 	}
 
 	void VisualContextAnnotator::loadCAFFEModel(const string modelBinPath, const string modelProtoTextPath, const string synthWordPath)
@@ -65,7 +83,7 @@ namespace hai
 	}
 	vector<Rect>  VisualContextAnnotator::detectWithCascadeClassifier(const Mat frame_gray, Size minSize)noexcept
 	{
-		tbb::mutex::scoped_lock lck(m0);
+		tbb::mutex::scoped_lock lck(cascadeClassLock);
 		vector<Rect> result;
 		Mat frame_gray_local(frame_gray);
 		cascade_classifier->detectMultiScale(frame_gray_local, result, 1.1, 3, 0, minSize, Size());
@@ -74,7 +92,7 @@ namespace hai
 
 	vector<Rect> VisualContextAnnotator::detectWithMorphologicalGradient(const Mat frame_gray, Size minSize, Size kernelSize) noexcept
 	{
-		tbb::mutex::scoped_lock lck(m8);
+		tbb::mutex::scoped_lock lck(morphGradientLock);
 		vector<Rect> result;
 		/**http://stackoverflow.com/questions/23506105/extracting-text-opencv**/
 
@@ -125,7 +143,7 @@ namespace hai
 	}
 	vector<Annotation> VisualContextAnnotator::detectContoursWithCanny(const Mat frame_gray, double lowThreshold, Size minSize) noexcept
 	{
-		tbb::mutex::scoped_lock lck(m9);
+		tbb::mutex::scoped_lock lck(contoursWithCannyLock);
 		vector<Annotation> result;
 		Mat detected_edges;
 		/// Reduce noise with a kernel 3x3
@@ -153,7 +171,7 @@ namespace hai
 				Rect r = boundingRect(approx);
 				if (r.size().width >= minSize.width && r.size().height >= minSize.height)
 				{
-					result.push_back(Annotation(cnt,"contour of " + std::to_string(cnt.size()) +" points.","contour"));
+					result.push_back(Annotation(cnt, "contour of " + std::to_string(cnt.size()) + " points.", "contour"));
 				}
 			}
 		}
@@ -162,7 +180,7 @@ namespace hai
 
 	vector<Rect> VisualContextAnnotator::detectObjectsWithCanny(const  Mat  frame_gray, double lowThreshold, Size minSize) noexcept
 	{
-		tbb::mutex::scoped_lock lck(m10);
+		tbb::mutex::scoped_lock lck(objectsWithCannyLock);
 		vector<Rect> result;
 
 		Mat detected_edges;
@@ -198,22 +216,14 @@ namespace hai
 		return result;
 	}
 
-	Annotation VisualContextAnnotator::predictWithLBPInRectangle(const Rect detect, const  Mat frame_gray) noexcept
+	Annotation VisualContextAnnotator::predictWithLBPInRectangle(const Rect detect, const  Mat frame_gray, const string& annotationType) noexcept
 	{
-		tbb::mutex::scoped_lock lck(lbpInRect);
+		tbb::mutex::scoped_lock lck(lbpInRectLock);
 		Mat face = frame_gray(detect);
 		int predictedLabel = -1;
 		double confidence = 0.0;
 
-		try
-		{
-			model->predict(face, predictedLabel, confidence);
-		}
-		catch (...)
-		{
-			cout << *current_exception << endl;
-		}
-
+		model->predict(face, predictedLabel, confidence);
 
 		std::stringstream fmt;
 		if (predictedLabel > 0 && confidence <= maxDistance)
@@ -222,70 +232,71 @@ namespace hai
 		}
 		else
 		{
-			fmt << "Unknown Human" << "L:" << predictedLabel << "C:" << confidence;
+			fmt << "Unknown " << annotationType << "L:" << predictedLabel << "C:" << confidence;
 		}
-		return Annotation(detect, fmt.str(), "human");
+		return Annotation(detect, fmt.str(), annotationType);
 	}
 
 	struct PredictWithLBPBody {
+		const string annotationType;
 		VisualContextAnnotator & vca_;
 		vector<Rect> detects_;
 		Mat frame_gray_;
 		vector<Annotation>& result_;
-		PredictWithLBPBody(VisualContextAnnotator & u, const vector<Rect> detects, const Mat frame_gray, const size_t tsize) :vca_(u), detects_(detects), frame_gray_(frame_gray), result_(vector<Annotation>(tsize)) {}
+		PredictWithLBPBody(VisualContextAnnotator & u, const vector<Rect> detects, const Mat frame_gray, vector<Annotation>& result, const string aAnnotationType) :vca_{ u }, detects_{ detects }, frame_gray_{ frame_gray }, result_{ result }, annotationType{ aAnnotationType } {}
 		void operator()(const tbb::blocked_range<size_t>& range) const {
 			for (size_t i = range.begin(); i != range.end(); ++i)
-				result_.push_back(vca_.predictWithLBPInRectangle(detects_[i], frame_gray_));
+				result_.push_back(vca_.predictWithLBPInRectangle(detects_[i], frame_gray_, annotationType));
 		}
 	};
 
 
 	vector<Annotation> VisualContextAnnotator::predictWithLBP(const Mat frame_gray) noexcept
 	{
-		tbb::mutex::scoped_lock lck(m1);
-		vector<Annotation> annotations;
+		tbb::mutex::scoped_lock lck(lbp1Lock);
 		static tbb::affinity_partitioner affinityLBP;
 
 		vector<Rect> detects = detectWithCascadeClassifier(frame_gray);
+		
+		if (detects.size() <= 0)
+			return vector<Annotation>();
 
-		const size_t tsize = detects.size();
-		if (tsize <= 0)
-			return annotations;
-		PredictWithLBPBody parallelLBP(*this, detects, frame_gray, tsize);
+		vector<Annotation> annotations(detects.size());
+		PredictWithLBPBody parallelLBP(*this, detects, frame_gray, annotations, "human");
 
-		tbb::parallel_for(tbb::blocked_range<size_t>(0, tsize), // Index space for loop
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, detects.size()), // Index space for loop
 			parallelLBP,                    // Body of loop
 			affinityLBP);
 
-		return parallelLBP.result_;
+		return annotations;
 	}
 
-	vector<Annotation>  VisualContextAnnotator::predictWithLBP(const  vector<Rect> detects, const Mat frame_gray) noexcept
+	vector<Annotation>  VisualContextAnnotator::predictWithLBP(const  vector<Rect> detects, const Mat frame_gray, const string& annotationType) noexcept
 	{
-		tbb::mutex::scoped_lock lck(m2);
-		vector<Annotation> annotations;
-		const size_t tsize = detects.size();
-		if (tsize <= 0)
-			return annotations;
-		static tbb::affinity_partitioner affinityLBP2;
-		PredictWithLBPBody parallelLBP(*this, detects, frame_gray, tsize);
+		tbb::mutex::scoped_lock lck(lbp2Lock);
+		static tbb::affinity_partitioner affinityLBP;
 
-		vector<Annotation> result(tsize);
-		tbb::parallel_for(tbb::blocked_range<size_t>(0, tsize), // Index space for loop
+		if (detects.size() <= 0)
+			return vector<Annotation>();
+
+		vector<Annotation> annotations(detects.size());
+		PredictWithLBPBody parallelLBP(*this, detects, frame_gray, annotations, annotationType);
+
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, detects.size()), // Index space for loop
 			parallelLBP,                    // Body of loop
-			affinityLBP2);
+			affinityLBP);
 
-		return parallelLBP.result_;
+		return annotations;
 	}
 
 	Annotation VisualContextAnnotator::predictWithCAFFEInRectangle(const Rect detect, const  Mat frame) noexcept
 	{
-		tbb::mutex::scoped_lock lck(caffeInRect);
+		tbb::mutex::scoped_lock lck(caffeInRectLock);
 
 		cv::Mat img;
 		img = Scalar::all(0);
 		resize(frame(detect), img, Size(244, 244));
-		
+
 		dnn::Blob inputBlob;
 		dnn::Blob prob;
 		inputBlob = dnn::Blob(img);
@@ -297,7 +308,7 @@ namespace hai
 		double classProb;
 		getMaxClass(prob, classId, classProb);//find the best class
 		stringstream caffe_fmt = stringstream();
-		caffe_fmt << "N:"<< '\''<< classNames.at(classId) << '\''<< " P:" << classProb * 100 << "%" << std::endl;
+		caffe_fmt << "N:" << '\'' << classNames.at(classId) << '\'' << " P:" << classProb * 100 << "%" << std::endl;
 		caffe_fmt << " ID:" << classId << std::endl;
 		// critical section here
 		return Annotation(detect, caffe_fmt.str(), classNames.at(classId));
@@ -308,7 +319,7 @@ namespace hai
 		vector<Rect> detects_;
 		Mat frame_gray_;
 		vector<Annotation>& result_;
-		PredictWithCAFFEBody(VisualContextAnnotator & u, const vector<Rect> detects, const Mat frame_gray, size_t tsize) :vca_(u), detects_(detects), frame_gray_(frame_gray), result_(vector<Annotation>(tsize)) {}
+		PredictWithCAFFEBody(VisualContextAnnotator & u, const vector<Rect> detects, const Mat frame_gray) :vca_(u), detects_(detects), frame_gray_(frame_gray), result_(vector<Annotation>(detects.size())) {}
 		void operator()(const tbb::blocked_range<size_t>& range) const {
 			for (size_t i = range.begin(); i != range.end(); ++i)
 			{
@@ -318,16 +329,16 @@ namespace hai
 	};
 	vector<Annotation> VisualContextAnnotator::predictWithCAFFE(const Mat frame, const  Mat  frame_gray) noexcept
 	{
-		tbb::mutex::scoped_lock lck(m5);
+		tbb::mutex::scoped_lock lck(caffe1Lock);
 		static tbb::affinity_partitioner affinityDNN2;
 		vector<Rect> detects = detectObjectsWithCanny(frame_gray);
-		const size_t tsize = detects.size();
-		if (tsize <= 0)
+
+		if (detects.size() <= 0)
 			return vector<Annotation>();
 
-		PredictWithCAFFEBody parallelDNN(*this, detects, frame, tsize);
+		PredictWithCAFFEBody parallelDNN(*this, detects, frame);
 
-		tbb::parallel_for(tbb::blocked_range<size_t>(0, tsize), // Index space for loop
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, detects.size()), // Index space for loop
 			parallelDNN,                    // Body of loop
 			affinityDNN2);
 
@@ -336,15 +347,15 @@ namespace hai
 
 	vector<Annotation> VisualContextAnnotator::predictWithCAFFE(const vector<Rect> detects, const Mat frame) noexcept
 	{
-		tbb::mutex::scoped_lock lck(m6);
+		tbb::mutex::scoped_lock lck(caffe2Lock);
 		static tbb::affinity_partitioner affinityDNN;
 
-		const size_t tsize = detects.size();
-		if (tsize <= 0)
+		if (detects.size() <= 0)
 			return vector<Annotation>();
-		PredictWithCAFFEBody parallelDNN(*this, detects, frame, tsize);
 
-		tbb::parallel_for(tbb::blocked_range<size_t>(0, tsize), // Index space for loop
+		PredictWithCAFFEBody parallelDNN(*this, detects, frame);
+
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, detects.size()), // Index space for loop
 			parallelDNN,                    // Body of loop
 			affinityDNN);
 
@@ -376,14 +387,14 @@ namespace hai
 			if (name.length())
 				classNames.push_back(name.substr(name.find(' ') + 1));
 		}
-		fp.close(); 
+		fp.close();
 		return classNames;
 	}
 
 
 	Annotation VisualContextAnnotator::predictWithTESSERACTInRectangle(const Rect  detect, const Mat frame_gray) noexcept
 	{
-		tbb::mutex::scoped_lock lck(tessInRect);
+		tbb::mutex::scoped_lock lck(tessInRectLock);
 		Mat sub = frame_gray(detect).clone();
 		tess->SetImage((uchar*)sub.data, sub.size().width, sub.size().height, sub.channels(), sub.step1());
 		int result = tess->Recognize(0);
@@ -403,7 +414,7 @@ namespace hai
 		vector<Rect> detects_;
 		Mat frame_gray_;
 		vector<Annotation>& result_;
-		PredictWithTESSERACTBody(VisualContextAnnotator & u, const vector<Rect> detects, const Mat frame_gray, const size_t tsize) : vca_(u), detects_(detects), frame_gray_(frame_gray), result_(vector<Annotation>(tsize)) {}
+		PredictWithTESSERACTBody(VisualContextAnnotator & u, const vector<Rect> detects, const Mat frame_gray) : vca_(u), detects_(detects), frame_gray_(frame_gray), result_(vector<Annotation>(detects.size())) {}
 		void operator()(const tbb::blocked_range<size_t>& range) const {
 			for (size_t i = range.begin(); i != range.end(); ++i)
 			{
@@ -414,16 +425,16 @@ namespace hai
 
 	vector<Annotation> VisualContextAnnotator::predictWithTESSERACT(const Mat frame_gray) noexcept
 	{
-		tbb::mutex::scoped_lock lck(m4);
+		tbb::mutex::scoped_lock lck(tess1Lock);
 		static tbb::affinity_partitioner affinityTESSERACT;
 
 		vector<Rect> detects = detectWithMorphologicalGradient(frame_gray);
-		const size_t tsize = detects.size();
-		if (tsize <= 0)
+		if (detects.size() <= 0)
 			return vector<Annotation>();
-		PredictWithTESSERACTBody parallelTESSERACT(*this, detects, frame_gray, tsize);
 
-		tbb::parallel_for(tbb::blocked_range<size_t>(0, tsize), // Index space for loop
+		PredictWithTESSERACTBody parallelTESSERACT(*this, detects, frame_gray);
+
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, detects.size()), // Index space for loop
 			parallelTESSERACT,                    // Body of loop
 			affinityTESSERACT);
 
@@ -432,16 +443,15 @@ namespace hai
 
 	vector<Annotation> VisualContextAnnotator::predictWithTESSERACT(const vector<Rect> detects, const Mat frame_gray) noexcept
 	{
-		tbb::mutex::scoped_lock lck(m5);
+		tbb::mutex::scoped_lock lck(tess2Lock);
 		static tbb::affinity_partitioner affinityTESSERACT2;
 
-		const size_t tsize = detects.size();
-		if (tsize <= 0)
+		if (detects.size() <= 0)
 			return vector<Annotation>();
 
-		PredictWithTESSERACTBody parallelTESSERACT(*this, detects, frame_gray, tsize);
+		PredictWithTESSERACTBody parallelTESSERACT(*this, detects, frame_gray);
 
-		tbb::parallel_for(tbb::blocked_range<size_t>(0, tsize), // Index space for loop
+		tbb::parallel_for(tbb::blocked_range<size_t>(0, detects.size()), // Index space for loop
 			parallelTESSERACT,                    // Body of loop
 			affinityTESSERACT2);
 

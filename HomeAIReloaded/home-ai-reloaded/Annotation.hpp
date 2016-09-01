@@ -6,8 +6,8 @@ namespace hai
 	class Annotation
 	{
 	public:
-		Annotation() {};
-		Annotation(std::vector<cv::Point> aContour, std::string desc, std::string type) : description{ desc }, contour{ aContour }, type{ type } {};
+		Annotation() noexcept : rectangle{ cv::Rect(0,0,0,0)}, description{ "empty" }, type{"empty"} {};
+		Annotation(std::vector<cv::Point> aContour, std::string desc, std::string type) noexcept : description{ desc }, contour{ aContour }, type{ type } {};
 		Annotation(cv::Rect rect, std::string desc, std::string type) : description{ desc }, rectangle{ rect }, type{ type } {};
 		~Annotation() {};
 

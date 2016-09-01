@@ -15,7 +15,6 @@ namespace hai
 	public:
 		ClipsAdapter(const string aRulesFilePath) : rulesFilePath{ aRulesFilePath }
 		{
-			DATA_OBJECT rv;
 			theCLIPSEnv = CreateEnvironment();
 			EnvBuild(theCLIPSEnv, defaultDeftemplateFN().c_str());
 			EnvLoad(theCLIPSEnv, aRulesFilePath.c_str());
@@ -23,23 +22,23 @@ namespace hai
 		};
 		~ClipsAdapter() { DestroyEnvironment(theCLIPSEnv); };
 
-		inline void callFactCreateFN(Annotation& annotation, const string& visualRepl) noexcept { tbb::mutex::scoped_lock(m0); addDetectFact2(theCLIPSEnv, annotation, visualRepl); };
+		inline void callFactCreateFN(Annotation& annotation, const string& visualRepl) noexcept { tbb::mutex::scoped_lock(createOneFactLock); addDetectFact2(theCLIPSEnv, annotation, visualRepl); };
 		inline void callFactCreateFN(vector<Annotation>& annotations, const string& visualRepl) noexcept
 		{
-			tbb::mutex::scoped_lock(m0);
+			tbb::mutex::scoped_lock(createOneFactLock);
 			for (auto& a : annotations)
 			{
 				addDetectFact2(theCLIPSEnv, a, visualRepl);
 			}
 		};
 
-		inline	void envReset() noexcept { tbb::mutex::scoped_lock(m0); EnvReset(theCLIPSEnv); };
-		inline	void envRun() noexcept { tbb::mutex::scoped_lock(m0); EnvRun(theCLIPSEnv, -1); };
-		inline	void envEval(string clipsCommand, DATA_OBJECT& result) noexcept { tbb::mutex::scoped_lock(m0); EnvEval(theCLIPSEnv, clipsCommand.c_str(), &result); };
-		inline	void envClear() noexcept { tbb::mutex::scoped_lock(m0); EnvClear(theCLIPSEnv); };
+		inline	void envReset() noexcept { tbb::mutex::scoped_lock(globalEnvLock); EnvReset(theCLIPSEnv); };
+		inline	void envRun() noexcept { tbb::mutex::scoped_lock(globalEnvLock); EnvRun(theCLIPSEnv, -1); };
+		inline	void envEval(string clipsCommand, DATA_OBJECT& result) noexcept { tbb::mutex::scoped_lock(globalEnvLock); EnvEval(theCLIPSEnv, clipsCommand.c_str(), &result); };
+		inline	void envClear() noexcept { tbb::mutex::scoped_lock(globalEnvLock); EnvClear(theCLIPSEnv); };
 
 	private:
-		tbb::mutex m0;
+		tbb::mutex createOneFactLock, createFactsLock,globalEnvLock;
 		cv::Ptr<void> theCLIPSEnv;
 		string rulesFilePath;
 
@@ -56,7 +55,9 @@ namespace hai
 
 		void addDetectFact2(void *environment, Annotation& a, const string& visualRepl) noexcept
 		{
-			tbb::mutex::scoped_lock(m0);
+			tbb::mutex::scoped_lock(createOneFactLock);
+			if (a.getType().compare("empty") == 0)
+				return;
 			void *newFact;
 			void *templatePtr;
 			void *theMultifield;
@@ -86,6 +87,7 @@ namespace hai
 			/*==============================*/
 			/* Set the value of the 'rectangle' slot. */
 			/*==============================*/
+
 			cv::Rect at;
 			if (a.getType().compare("contour") == 0)
 			{

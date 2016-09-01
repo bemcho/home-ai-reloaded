@@ -30,6 +30,8 @@ namespace hai
 		void loadLBPModel(const string path, double maxDistance = 65.0);
 		void loadCAFFEModel(const string modelBinPath, const string modelProtoTextPath, const string synthWordPath);
 		void loadTESSERACTModel(const string& dataPath, const string& lang, tesseract::OcrEngineMode mode = tesseract::OEM_DEFAULT);
+		void train(vector<cv::Mat> samples, int label, string ontology) noexcept;
+		void update(vector<cv::Mat> samples, int label, string ontology) noexcept;
 
 		vector<Rect>  detectWithCascadeClassifier(const Mat frame_gray, Size minSize = Size(80, 80)) noexcept;
 		vector<Rect>  detectWithMorphologicalGradient(const Mat frame, Size minSize = Size(8, 8), Size kernelSize = Size(9, 1)) noexcept;
@@ -37,8 +39,8 @@ namespace hai
 		vector<Annotation>  detectContoursWithCanny(const Mat frame_gray, double lowThreshold = 77, Size minSize = Size(80, 80)) noexcept;
 
 		vector<Annotation> predictWithLBP(const Mat  frame_gray) noexcept;
-		vector<Annotation> predictWithLBP(const vector<Rect> detects, const Mat  frame_gray) noexcept;
-		Annotation predictWithLBPInRectangle(const Rect  detect, const Mat  frame_gray) noexcept;
+		vector<Annotation> predictWithLBP(const vector<Rect> detects, const Mat  frame_gray, const string& annotationType) noexcept;
+		Annotation predictWithLBPInRectangle(const Rect  detect, const Mat  frame_gray, const string& annotationType) noexcept;
 
 		vector<Annotation> predictWithCAFFE(const Mat frame, const Mat frame_gray) noexcept;
 		vector<Annotation> predictWithCAFFE(const vector<Rect> detects, const Mat frame) noexcept;
@@ -53,9 +55,10 @@ namespace hai
 		unique_ptr<CascadeClassifier> cascade_classifier;
 		unique_ptr<tesseract::TessBaseAPI> tess;
 		unique_ptr<dnn::Net> net;
-		tbb::mutex m0, m1, m2, m3, m4, m5, m6, m7, m8, m9, m10, lbpInRect, tessInRect, caffeInRect;
+		tbb::mutex cascadeClassLock, lbp1Lock, lbp2Lock, caffe1Lock, caffe2Lock, tess1Lock, tess2Lock, morphGradientLock, contoursWithCannyLock, objectsWithCannyLock, lbpInRectLock, tessInRectLock, caffeInRectLock, training;
 
 		double maxDistance;
+		string lbpModelPath;
 		void getMaxClass(dnn::Blob & probBlob, int & classId, double & classProb);
 		std::vector<String> readClassNames(const string filename);
 		std::vector<String> classNames;

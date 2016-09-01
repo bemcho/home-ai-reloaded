@@ -165,7 +165,6 @@
   <ItemGroup>
     <ClCompile Include="..\home-ai-reloaded\home_ai_visual_repl.cpp" />
     <ClCompile Include="..\home-ai-reloaded\VisualContextAnnotator.cpp" />
-    <ClCompile Include="..\home-ai-reloaded\VisualREPL.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\home-ai-reloaded\Annotation.hpp" />

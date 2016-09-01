@@ -11,6 +11,7 @@
 #include "VisualContextAnnotator.hpp"
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_invoke.h"
+#include "tbb/mutex.h"
 #include "ClipsAdapter.hpp"
 #include "VisualREPL.hpp"
 #include "ClipsAdapter.hpp"
@@ -36,41 +37,107 @@ vector<shared_ptr<VisualREPL>> cameras;
 VisualContextAnnotator faceAnnotator;
 VisualContextAnnotator textAnnotator;
 VisualContextAnnotator objectsAnnotator;
+
+thread textAnnotatorTrainerThread;
+tbb::mutex trainMutex;
 int lowThreshold = 77;
 const int MAX_CAMERAS = 5;
 const bool WINDOW_SHOW = true;
 
-vector<Annotation> annotateFaceTextContoursFN(Mat f, Mat f_g)
+vector<Annotation> annotateFaceContoursFN(Mat f, Mat f_g)
 {
 	vector<Annotation> result;
 	vector<Annotation> face;
-	vector<Annotation> text;
+	vector<Annotation> contours;
+	vector<Annotation> objects;
+
+	tbb::parallel_invoke(
+		[&]
+	()
+	{
+		objects = objectsAnnotator.predictWithLBP(textAnnotator.detectObjectsWithCanny(f_g), f_g, "object");
+	},
+		[&]
+	()
+	{
+		face = faceAnnotator.predictWithLBP(f_g);
+	},
+		[&]
+	()
+	{
+		contours = objectsAnnotator.detectContoursWithCanny(f_g);
+	}
+	);
+	result.insert(result.end(), face.begin(), face.end());
+	result.insert(result.end(), objects.begin(), objects.end());
+	result.insert(result.end(), contours.begin(), contours.end());
+
+	return result;
+}
+
+vector<Annotation> annotateObjectsFN(Mat f, Mat f_g)
+{
+	vector<Annotation> result;
+	vector<Annotation> face;
+	vector<Annotation> objects;
+	vector<Annotation> contours;
+
+ 	tbb::parallel_invoke(
+		[&]
+	()
+	{
+		objects = objectsAnnotator.predictWithLBP(textAnnotator.detectObjectsWithCanny(f_g), f_g, "object");
+	},
+
+		[&]
+	()
+	{
+		face = faceAnnotator.predictWithLBP(f_g);
+	},
+		[&]
+	()
+	{
+		contours = objectsAnnotator.detectContoursWithCanny(f_g);
+	}
+	);
+	result.insert(result.end(), objects.begin(), objects.end());
+	result.insert(result.end(), face.begin(), face.end());
+	result.insert(result.end(), contours.begin(), contours.end());
+
+	return result;
+}
+vector<Annotation> annotateTextContoursFN(Mat f, Mat f_g)
+{
+	vector<Annotation> result;
+	vector<Annotation> objects;
 	vector<Annotation> contours;
 
 	tbb::parallel_invoke(
 		[&]
 	()
 	{
-		text =  textAnnotator.predictWithTESSERACT(f_g);
+		objects = textAnnotator.predictWithTESSERACT(f_g);
+
 	},
 		[&]
 	()
 	{
-		face =  faceAnnotator.predictWithLBP(f_g) ;
-	},
-		[&]
-	()
-	{
-		contours = faceAnnotator.detectContoursWithCanny(f_g);
+		contours = objectsAnnotator.detectContoursWithCanny(f_g);
 	}
 	);
-	result.insert(result.end(), text.begin(), text.end());
-	result.insert(result.end(), face.begin(), face.end());
+	result.insert(result.end(), objects.begin(), objects.end());
 	result.insert(result.end(), contours.begin(), contours.end());
 
 	return result;
 }
-
+void updateLBPModelFN(vector<cv::Mat> samples, int  label, string ontology, bool& aTInProgress)
+{
+	tbb::mutex::scoped_lock(trainMutex);
+	cout << "Calling LBP model -> update\n";
+	aTInProgress = true;
+	objectsAnnotator.update(samples, label, ontology);
+	aTInProgress = false;
+}
 /**
 * @function main
 */
@@ -90,11 +157,28 @@ int main(int, char**)
 
 	for (int i = 0; i < MAX_CAMERAS; i++)
 	{
-		cout << "--(!)Camera found on " << i << " device index." << endl;
-		shared_ptr<VisualREPL> vreplP = make_shared<VisualREPL>(VisualREPL("Stream " + std::to_string(i), clips, annotateFaceTextContoursFN, WINDOW_SHOW));
-		if (vreplP->startAt(i, 10))
+		shared_ptr<VisualREPL> vreplP;
+		if (i == 0)
+		{
+			vreplP = make_shared<VisualREPL>(VisualREPL("Stream " + std::to_string(i), clips, annotateObjectsFN, updateLBPModelFN, WINDOW_SHOW));
+		}
+		else if (i == 1)
+		{
+			vreplP = make_shared<VisualREPL>(VisualREPL("Stream " + std::to_string(i), clips, annotateFaceContoursFN, updateLBPModelFN, WINDOW_SHOW));
+		}
+		else if (i == 2)
+		{
+			vreplP = make_shared<VisualREPL>(VisualREPL("Stream " + std::to_string(i), clips, annotateTextContoursFN, updateLBPModelFN, WINDOW_SHOW));
+		}
+		else
+		{
+			vreplP = make_shared<VisualREPL>(VisualREPL("Stream " + std::to_string(i), clips, annotateFaceContoursFN, updateLBPModelFN, WINDOW_SHOW));
+		}
+
+		if (vreplP->startAt(i, 30))
 		{
 			cameras.push_back(vreplP);
+			cout << "--(!)Camera found on " << i << " device index." << endl;
 		}
 		else
 		{
@@ -104,8 +188,9 @@ int main(int, char**)
 
 	while (true)
 	{
-		DATA_OBJECT rv;
+
 		this_thread::sleep_for(std::chrono::milliseconds(100));
+		//DATA_OBJECT rv;
 		//clips.envEval("(facts)", rv);
 		clips.envRun();
 		this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -114,7 +199,7 @@ int main(int, char**)
 		{
 			break;
 		}
-		
+
 	}
 	std::terminate();
 
