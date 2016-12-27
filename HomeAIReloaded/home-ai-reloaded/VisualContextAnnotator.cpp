@@ -86,7 +86,7 @@ namespace hai
 		tbb::mutex::scoped_lock lck(cascadeClassLock);
 		vector<Rect> result;
 		Mat frame_gray_local(frame_gray);
-		cascade_classifier->detectMultiScale(frame_gray_local, result, 1.1, 3, 0, minSize, Size());
+		cascade_classifier->detectMultiScale(frame_gray_local, result, 1.1, 10, 0, minSize, Size());
 		return result;
 	}
 
@@ -396,6 +396,12 @@ namespace hai
 	{
 		tbb::mutex::scoped_lock lck(tessInRectLock);
 		Mat sub = frame_gray(detect).clone();
+		if (detect.height < 50)
+		{
+			resize(sub, sub, Size(detect.width*3 , detect.height * 3));
+		}
+		
+		
 		tess->SetImage((uchar*)sub.data, sub.size().width, sub.size().height, sub.channels(), sub.step1());
 		int result = tess->Recognize(0);
 		string strText(tess->GetUTF8Text());

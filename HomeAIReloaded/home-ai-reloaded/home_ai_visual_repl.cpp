@@ -81,8 +81,14 @@ vector<Annotation> annotateObjectsFN(Mat f, Mat f_g)
 	vector<Annotation> face;
 	vector<Annotation> objects;
 	vector<Annotation> contours;
-
+	vector<Annotation> texts;
+	
  	tbb::parallel_invoke(
+		[&]
+	()
+	{
+		texts = textAnnotator.predictWithTESSERACT(f_g);
+	},
 		[&]
 	()
 	{
@@ -100,6 +106,7 @@ vector<Annotation> annotateObjectsFN(Mat f, Mat f_g)
 		contours = objectsAnnotator.detectContoursWithCanny(f_g);
 	}
 	);
+	result.insert(result.end(), texts.begin(), texts.end());
 	result.insert(result.end(), objects.begin(), objects.end());
 	result.insert(result.end(), face.begin(), face.end());
 	result.insert(result.end(), contours.begin(), contours.end());
@@ -191,7 +198,7 @@ int main(int, char**)
 
 		this_thread::sleep_for(std::chrono::milliseconds(100));
 		//DATA_OBJECT rv;
-		//clips.envEval("(facts)", rv);
+		//clips.envEval("(cyclicCallback)", rv);
 		clips.envRun();
 		this_thread::sleep_for(std::chrono::milliseconds(50));
 		//-- bail out if escape was pressed
